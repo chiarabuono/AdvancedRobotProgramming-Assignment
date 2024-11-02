@@ -1,61 +1,49 @@
-#include <ncurses.h>
 #include <stdio.h>
-#include <string.h>
-#include <fcntl.h>  
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
 
-#define w1 0        
-#define w2 1        
-#define r1 2        
-#define r2 3        
+int main(int argc, char *argv[]) {
+    if (argc < 5) {
+        fprintf(stderr, "Uso: %s <fd_str[0]> <fd_str[1]> <fd_str[2]> <fd_str[3]>\n", argv[0]);
+        exit(1);
+    }
 
-#define ask 0       
-#define receive 1
+    // Apriamo il file outputbb.txt in modalità scrittura
+    FILE *file = fopen("outputbb.txt", "w");
+    if (file == NULL) {
+        perror("Errore nell'apertura del file");
+        exit(1);
+    }
 
-#define read 0
-#define write 1 
+    // Iteriamo su ogni fd_str passato come argomento
+    for (int i = 1; i < argc; i++) {
+        char *fd_str = argv[i];
+        fprintf(file, "\nfd_str ricevuto bb[%d]: %s\n", i-1, fd_str);
 
-#define PROCESSNUM 4
-#define PIPESNUM 4
+        int fds[4];
+        int index = 0;
 
-int main() {
+        // Tokenizza ogni fd_str e scarta il primo elemento
+        char *token = strtok(fd_str, ",");
+        token = strtok(NULL, ",");  // Salta il primo elemento
 
-    int pipes [PIPESNUM][2][2];
+        // Estrai i descrittori di file rimanenti
+        while (token != NULL && index < 4) {
+            fds[index] = atoi(token);
+            index++;
+            token = strtok(NULL, ",");
+        }
 
-    for (int i = 0; i < PIPESNUM; i++) {
-        for (int j = 0; j < 2; j++){
-            if (pipe(pipes[i][j]) == -1) {
-                perror("Pipe creation error");
-                exit(1);
-            }
+        // Stampa i descrittori estratti nel file
+        fprintf(file, "Descrittori di file estratti da fd_str[%d]:\n", i-1);
+        for (int j = 0; j < index; j++) {
+            fprintf(file, "fds[%d]: %d\n", j, fds[j]);
         }
     }
 
-    pid_t pids [PROCESSNUM];
-    char fd_str[15];
-
-    sprintf(fd_str, "%d", pipes[w1][ask][read]);
-    char *args[] = {fd_str};
-
-    // for (int i = 0; i < PROCESSNUM; i++){
-        pids[1] = fork();
-        if(pids[1] != 0){
-            return pids[1];
-        }
-        else{
-            execl("./w1", "./w1", fd_str, NULL);
-        }
-    // }
-
-    wait(NULL);
-    wait(NULL);
-    wait(NULL);
-    wait(NULL);
+    // Chiudiamo il file
+    fclose(file);
 
     return 0;
 }
-
