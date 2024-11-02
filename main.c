@@ -26,24 +26,27 @@ int main() {
 
     int pipes [PROCESSNUM][PIPEXPROCESS][2];
 
+    // creazione e riempimento pipes
     for (int i = 0; i < PROCESSNUM; i++) {
         for (int j = 0; j < 2; j++){
-            if (pipe(pipes[i][j]) == -1) {
-                perror("Pipe creation error");
+            if (pipe(pipes[i][j]) == -1) {          //creazione di una pipe con il comando pipe(number)
+                perror("Pipe creation error");      // return error
                 exit(1);
-            }
+            } else {printf("read: %d\t write: %d\n", pipes[i][j][0], pipes[i][j][1]);}  // per capire fd delle varie pipe
         }
     }
 
-    pid_t pids[PROCESSNUM];
-    char fd_str[PROCESSNUM][50]; 
-    char test[15];
     
-    for(int i = 0; i < PROCESSNUM; i++){
+    char fd_str[PROCESSNUM][50];        // file descriptor of pipes (ex. read 3 - write 4, read 5 - write 6)
+    char test[15];                      // temporary variable
+    
+
+    for(int i = 0; i < PROCESSNUM; i++){    //initial 0 to be able to use strcat
         sprintf(fd_str[i], "%d", 0);
         strcat(fd_str[i], ",");
     }
 
+    //riempimento fd_str con i valori in pipes (separati da virgola)
     for(int i = 0; i < PROCESSNUM; i++){
         for(int j = 0; j < PIPEXPROCESS; j++){
             for(int k = 0; k < 2; k++){
@@ -54,14 +57,18 @@ int main() {
         }
     }
 
+    pid_t pids[PROCESSNUM];             // process ID
+
+    // riempimento pids[PROCESSNUM]
     for (int i = 0; i < PROCESSNUM; i++){
-        printf("\ni: %d", i);
         pids[i] = fork();
 
+        //creation error
         if (pids[i] < 0) {
             perror("Errore nella fork");
             exit(1);
         } 
+        // va a buon fine
         else if (pids[i] == 0) { // Processo figlio
             char *args[] = { NULL, fd_str[i], NULL }; // Array di argomenti per execvp
 

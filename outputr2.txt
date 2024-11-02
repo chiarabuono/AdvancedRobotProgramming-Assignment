@@ -1,0 +1,1 @@
+fd_str ricevuto r2: 0,15,16,17,18,

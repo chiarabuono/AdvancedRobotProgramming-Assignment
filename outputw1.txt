@@ -1,0 +1,1 @@
+fd_str ricevuto w1: 0,3,4,5,6,
