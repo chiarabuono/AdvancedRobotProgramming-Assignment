@@ -1,0 +1,14 @@
+# Ignora tutto
+*
+
+# Ignora i file .gitignore
+!.gitignore
+
+# Non ignorare i file .c
+!*.c
+
+# Non ignorare i file .h
+!*.h
+
+# Non ignorare i readme
+!*.md
