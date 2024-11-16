@@ -9,7 +9,9 @@
 #include <sys/wait.h>
 #include "auxfunc.h"
 #include <math.h>
+#include <sys/select.h>
 
+//#include <errno.h>
 
 // process that ask or receive
 #define askwr 1
@@ -20,10 +22,13 @@
 #define MAX_DIRECTIONS 80
 #define WINDOW_WIDTH 400
 #define WINDOW_LENGHT 800
+#define PERIOD 10 //[Hz]
 
 typedef struct {
     float x;
     float y;
+    float previous_x[2];   // 0 is one before and 1 is is two before
+    float previous_y[2];
 
 } Element;
 
@@ -33,7 +38,7 @@ typedef struct {
 } Element_bb;
 
 const char* moves[] = {"up", "down", "right", "left", "upleft", "upright", "downleft", "downright"};
-Element drone = {10.0, 20.0};  
+Element drone = {10.0, 20.0, 11.0, 21.0, 12.0, 22.0};  
 
 // Useful for debugging
 void printPosition(Element p) {
@@ -44,47 +49,50 @@ void printPosition(Element p) {
 // Simulate user input
 void fillDirections(const char* filled[], int* size) {
     for (int i = 0; i < *size; i++) {
-        int randomIndex = rand() % 8;
+        int randomIndex = 7;
         filled[i] = moves[randomIndex]; 
     }
 }
 
 // Update drone position
-void updatePosition(Element* p, const char* direction) {
+void updatePosition(Element* p, const char* direction, float* force) {
+
+    // store current position and slide the previous position to the pre-previous position
+    p->previous_x[1] = p->previous_x[0];
+    p->previous_y[1] = p->previous_y[0];
+    p->previous_x[0] = p->x;
+    p->previous_y[0] = p->y;
+
+    // conditions to stay inside the window
     int up_condition = (p->y > 1) ? 1 : 0;
     int down_condition = (p->y < WINDOW_WIDTH - 1) ? 1 : 0;
     int right_condition = (p->x < WINDOW_LENGHT - 1) ? 1 : 0;
     int left_condition = (p->x > 1) ? 1 : 0;
 
 
-    if (strcmp(direction, "up") == 0 && up_condition) p->y -= 1;
-    else if (strcmp(direction, "down") == 0 && down_condition) p->y += 1;
-    else if (strcmp(direction, "right") == 0 && right_condition) p->x += 1;
-    else if (strcmp(direction, "left") == 0 && left_condition) p->x -= 1;
+    if (strcmp(direction, "up") == 0 && up_condition) p->y -= force[0];
+    else if (strcmp(direction, "down") == 0 && down_condition) p->y += force[0];
+    else if (strcmp(direction, "right") == 0 && right_condition) p->x += force[0];
+    else if (strcmp(direction, "left") == 0 && left_condition) p->x -= force[0];
 
     else if (strcmp(direction, "upleft") == 0 && up_condition && left_condition) {
-        // printf("Before -");
-        // printPosition(drone);
-        p->x -= 1.0 / sqrt(2);
-        p->y -= 1.0 / sqrt(2);
-        // printf("Upleft - ");
-        // printPosition(drone);
+        p->x -= force[0] / sqrt(2);
+        p->y -= force[0] / sqrt(2);
         }
     else if (strcmp(direction, "upright") == 0 && up_condition && right_condition) {
-        p->x += 1.0 / sqrt(2);
-        p->y -= 1.0 / sqrt(2);
+        p->x += force[0] / sqrt(2);
+        p->y -= force[0] / sqrt(2);
     }
     else if (strcmp(direction, "downleft") == 0 && down_condition && left_condition) {
-        p->x -= 1.0 / sqrt(2);
-        p->y += 1.0 / sqrt(2);
+        p->x -= force[0] / sqrt(2);
+        p->y += force[0] / sqrt(2);
     }
     else if (strcmp(direction, "downright") == 0 && down_condition && right_condition) {
-        p->x += 1.0 / sqrt(2);
-        p->y += 1.0 / sqrt(2);
+        p->x += force[0] / sqrt(2);
+        p->y += force[0] / sqrt(2);
     }
 
 }
-
 // Remove first element of the array
 void removeFirstElement(const char* directions[], int* size) {
     if (*size == 0) {
@@ -97,6 +105,22 @@ void removeFirstElement(const char* directions[], int* size) {
         }
         (*size)--;
     }
+}
+
+float* drone_force(Element* p, float mass, float K) {
+
+    float* force = (float*)malloc(2 * sizeof(float));
+    if (force == NULL) return NULL;  // Return NULL if memory allocation fails
+
+    float derivative1x = (p->x - p->previous_x[0])/PERIOD;
+    float derivative2x = (p->previous_x[1] + p->x -2 * p->previous_x[0])/(PERIOD * PERIOD);
+    force[0] = (mass * derivative2x + K * derivative1x == 0) ? 1: mass * derivative2x + K * derivative1x;
+
+    float derivative1y = (p->y - p->previous_y[0])/PERIOD;
+    float derivative2y = (p->previous_y[1] + p->y -2 * p->previous_y[0])/(PERIOD * PERIOD);
+    force[1] = (mass * derivative2y + K * derivative1y == 0) ? 1: mass * derivative2y + K * derivative1y;  
+
+    return force;
 }
 
 int main(int argc, char *argv[]) {
@@ -145,18 +169,24 @@ int main(int argc, char *argv[]) {
 
     // Simulate user input
     fillDirections(directions, &directionCount);
+
     //for (int i = 0; i < MAX_DIRECTIONS; i++) printf("%s\n", directions[i]);
+    float mass = 1.0;
+    float K = 1.0;
+    float* F;
 
 
     while (1) {
-        updatePosition(&drone, directions[0]);
+        F = drone_force(&drone, mass, K);
+        
+        updatePosition(&drone, directions[0], F);
         if (drone.x < 0 || drone.y < 0 || drone.x > WINDOW_LENGHT || drone.y > WINDOW_WIDTH) printf("ERROR");
 
         //printf("Removing direction: %s\n", directions[0]);
         removeFirstElement(directions, &directionCount);
 
-
-        usleep(100000); 
+        //printf("F = (%f, %f)\n", F[0], F[1]);
+        sleep(1/PERIOD); 
     }
     
     // Chiudiamo il file
