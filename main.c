@@ -6,13 +6,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
-
-
-#define drone 0        
-#define input 1        
-#define obstacle 2        
-#define target 3        
+#include <sys/wait.h>       
+#include "auxfunc.h"
 
 #define ask 0       
 #define receive 1
@@ -59,6 +54,18 @@ int main() {
         }
     }
 
+        FILE *logfile = fopen("log.txt", "w");
+    if (logfile == NULL) {
+        perror("Errore nell'apertura del file");
+        exit(1);
+    }
+
+    FILE *paramfile = fopen("parameters.txt", "w");
+    if (paramfile == NULL) {
+        perror("Errore nell'apertura del file");
+        exit(1);
+    }
+    
     pid_t pids[PROCESSNUM];           
 
     for (int i = 0; i < PROCESSNUM; i++){
@@ -139,18 +146,6 @@ int main() {
             perror("Error in execvp for watchdog");
             exit(1);
         }
-    }
-
-    FILE *logfile = fopen("log.txt", "w");
-    if (logfile == NULL) {
-        perror("Errore nell'apertura del file");
-        exit(1);
-    }
-
-    FILE *paramfile = fopen("parameters.txt", "w");
-    if (paramfile == NULL) {
-        perror("Errore nell'apertura del file");
-        exit(1);
     }
 
     // wait for the son processes termination

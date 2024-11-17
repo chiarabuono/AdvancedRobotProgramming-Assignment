@@ -47,12 +47,11 @@ int main(int argc, char *argv[]) {
     int pid = (int)getpid();
     char dataWrite [80] ;
     snprintf(dataWrite, sizeof(dataWrite), "o%d,", pid);
-    
-    if(writeSecure("log.txt", dataWrite) == -1){
+
+    if(writeSecure("log.txt", dataWrite,1,'a') == -1){
         perror("Error in writing in log.txt");
         exit(1);
     }
-
     //Closing unused pipes heads to avoid deadlock
     close(fds[askrd]);
     close(fds[recwr]);

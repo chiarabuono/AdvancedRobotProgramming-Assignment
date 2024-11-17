@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     }
     
     // Opening log file
-    FILE *file = fopen("outputobstacle.txt", "a");
+    FILE *file = fopen("outputtarget.txt", "a");
     if (file == NULL) {
         perror("Errore nell'apertura del file");
         exit(1);
@@ -47,8 +47,8 @@ int main(int argc, char *argv[]) {
     int pid = (int)getpid();
     char dataWrite [80] ;
     snprintf(dataWrite, sizeof(dataWrite), "t%d,", pid);
-    
-    if(writeSecure("log.txt", dataWrite) == -1){
+
+    if(writeSecure("log.txt", dataWrite,1,'a') == -1){
         perror("Error in writing in log.txt");
         exit(1);
     }
