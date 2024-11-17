@@ -8,13 +8,21 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include "auxfunc.h"
-
+#include <signal.h>
 
 // process that ask or receive
 #define askwr 1
 #define askrd 0
 #define recwr 3
 #define recrd 2
+
+int pid;
+
+void sig_handler(int signo) {
+    if (signo == SIGUSR1) {
+        handler(obstacle,pid,obstacle+2);
+    }
+}
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -44,7 +52,7 @@ int main(int argc, char *argv[]) {
         token = strtok(NULL, ",");
     }
 
-    int pid = (int)getpid();
+    pid = (int)getpid();
     char dataWrite [80] ;
     snprintf(dataWrite, sizeof(dataWrite), "o%d,", pid);
 
@@ -56,10 +64,11 @@ int main(int argc, char *argv[]) {
     close(fds[askrd]);
     close(fds[recwr]);
 
+    signal(SIGUSR1, sig_handler);
 
     while (1) {
 
-       ;
+       pause();
     }
     
     // Chiudiamo il file

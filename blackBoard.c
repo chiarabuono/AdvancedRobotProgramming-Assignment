@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "auxfunc.h"
+#include <signal.h>
 
 #define drone 0
 #define input 1
@@ -26,6 +27,13 @@
 
 #define nfds 19
 
+int pid;
+
+void sig_handler(int signo) {
+    if (signo == SIGUSR1) {
+        handler(blackboard,pid,blackboard+2);
+    }
+}
 
 int randomSelect(int n) {
     unsigned int random_number;
@@ -89,7 +97,7 @@ int main(int argc, char *argv[]) {
     //     }
     // }
 
-    int pid = (int)getpid();
+    pid = (int)getpid();
     char dataWrite [80] ;
     snprintf(dataWrite, sizeof(dataWrite), "b%d,", pid);
 
@@ -118,65 +126,67 @@ int main(int argc, char *argv[]) {
     tv.tv_sec = 0;
     tv.tv_usec = 1000;
     
+    signal(SIGUSR1, sig_handler);
+
     while (1) {
+        pause();     
+        // //FDs setting for select
 
-        //FDs setting for select
+        // FD_ZERO(&readfds);
+        // FD_SET(fds[drone][askrd], &readfds);
+        // FD_SET(fds[input][askrd], &readfds);
+        // FD_SET(fds[obstacle][askrd], &readfds);
+        // FD_SET(fds[target][askrd], &readfds); 
 
-        FD_ZERO(&readfds);
-        FD_SET(fds[drone][askrd], &readfds);
-        FD_SET(fds[input][askrd], &readfds);
-        FD_SET(fds[obstacle][askrd], &readfds);
-        FD_SET(fds[target][askrd], &readfds); 
+        // int fdsQueue [4];
+        // int ready = 0;
 
-        int fdsQueue [4];
-        int ready = 0;
+        // int sel = select(nfds, &readfds, NULL, NULL, &tv);
 
-        int sel = select(nfds, &readfds, NULL, NULL, &tv);
+        // if (sel == -1) {
+        //     perror("Select error");
+        //     break;
+        // } 
 
-        if (sel == -1) {
-            perror("Select error");
-            break;
-        } 
-
-        if (FD_ISSET(fds[drone][askrd], &readfds)) {
-            fdsQueue[ready] = fds[drone][askrd];
-            ready++;
-        }
-        if (FD_ISSET(fds[input][askrd], &readfds)) {
-            fdsQueue[ready] = fds[input][askrd];
-            ready++;
-        }
-        if (FD_ISSET(fds[obstacle][askrd], &readfds)) {
-            fdsQueue[ready] = fds[obstacle][askrd];
-            ready++;
-        }
-        if (FD_ISSET(fds[target][askrd], &readfds)) {
-            fdsQueue[ready] = fds[target][askrd];
-            ready++;
-        }
+        // if (FD_ISSET(fds[drone][askrd], &readfds)) {
+        //     fdsQueue[ready] = fds[drone][askrd];
+        //     ready++;
+        // }
+        // if (FD_ISSET(fds[input][askrd], &readfds)) {
+        //     fdsQueue[ready] = fds[input][askrd];
+        //     ready++;
+        // }
+        // if (FD_ISSET(fds[obstacle][askrd], &readfds)) {
+        //     fdsQueue[ready] = fds[obstacle][askrd];
+        //     ready++;
+        // }
+        // if (FD_ISSET(fds[target][askrd], &readfds)) {
+        //     fdsQueue[ready] = fds[target][askrd];
+        //     ready++;
+        // }
         
 
-        if(ready > 0){
-            unsigned int rand = randomSelect(ready);
-            int selected = fdsQueue[rand];
+        // if(ready > 0){
+        //     unsigned int rand = randomSelect(ready);
+        //     int selected = fdsQueue[rand];
 
-            if (selected == fds[drone][askrd]){
-                fprintf(file, "selected drone\n");
-                fflush(file);   
-            } else if (selected == fds[input][askrd]){
-                fprintf(file, "selected input\n");
-                fflush(file);             
-            } else if (selected == fds[obstacle][askrd]){
-                fprintf(file, "selected obstacle\n");
-                fflush(file);
-            }else if (selected == fds[target][askrd]){
-                fprintf(file, "selected target\n");
-                fflush(file);
-            }else{
-                fprintf(file, "Problems\n");
-                fflush(file);
-            }
-        }
+        //     if (selected == fds[drone][askrd]){
+        //         fprintf(file, "selected drone\n");
+        //         fflush(file);   
+        //     } else if (selected == fds[input][askrd]){
+        //         fprintf(file, "selected input\n");
+        //         fflush(file);             
+        //     } else if (selected == fds[obstacle][askrd]){
+        //         fprintf(file, "selected obstacle\n");
+        //         fflush(file);
+        //     }else if (selected == fds[target][askrd]){
+        //         fprintf(file, "selected target\n");
+        //         fflush(file);
+        //     }else{
+        //         fprintf(file, "Problems\n");
+        //         fflush(file);
+        //     }
+        // }
     }
 
     return 0;
