@@ -20,7 +20,7 @@ int pid;
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
-        handler(drone,pid,drone+2);
+        handler(drone,100);
     }
 }
 

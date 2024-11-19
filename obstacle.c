@@ -20,7 +20,7 @@ int pid;
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
-        handler(obstacle,pid,obstacle+2);
+        handler(obstacle,100);
     }
 }
 

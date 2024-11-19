@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include "auxfunc.h"
 #include <signal.h>
@@ -14,6 +15,9 @@
 #define PROCESSTOCONTROL 5
 
 int pid[PROCESSTOCONTROL] = {0};  // Initialize PIDs to 0
+
+struct timeval start, end;
+long elapsed_ms;
 
 int main(int argc, char *argv[]) {
     // Open the output file for writing
@@ -64,57 +68,62 @@ int main(int argc, char *argv[]) {
         sleep(10);
         for (int i = 0; i < PROCESSTOCONTROL; i++) {
             if (pid[i] != 0) {
+                if(writeSecure("log.txt", "e", i + 2, 'o') == -1){
+                    perror("Error writing the log file");
+                    fclose(file);
+                    exit(1);
+                }
+                gettimeofday(&start, NULL); // Tempo iniziale
                 if (kill(pid[i], SIGUSR1) == -1) {
                     printf("Process %d is not responding or has terminated\n", pid[i]);
                     pid[i] = 0; // Imposta il PID a 0 per ignorare in futuro
                 } else {
-                    usleep(100000);
                     if(readSecure("log.txt", datareaded, i + 2) == -1){
                         perror("Error reading the log file");
                         fclose(file);
                         exit(1);
                     }
-                    // Extract time and period from datareaded
-                    char timereaded[9];  // Format: hh:mm:ss
-                    char period[10]; // Assuming period is less than 10 characters
-                    sscanf(datareaded, "%8[^,],%9s", timereaded, period);
-                    
-                    // Get current time
-                    time_t now = time(NULL);
-                    struct tm *current_time = localtime(&now);
-                    char current_time_str[9];
-                    strftime(current_time_str, sizeof(current_time_str), "%H:%M:%S", current_time);
-
-                    // Convert both times to seconds since midnight
-                    int h1, m1, s1, h2, m2, s2;
-                    sscanf(timereaded, "%d:%d:%d", &h1, &m1, &s1);
-                    sscanf(current_time_str, "%d:%d:%d", &h2, &m2, &s2);
-                    int time_seconds = h1 * 3600 + m1 * 60 + s1;
-                    int current_time_seconds = h2 * 3600 + m2 * 60 + s2;
-
-                    // Convert period to seconds
-                    int period_seconds = atoi(period);
-
-                    char process[20];   
-                    if(i == 0){
-                        strcpy(process, "drone");
-                    } else if(i == 1){
-                        strcpy(process, "input");
-                    } else if(i == 2){
-                        strcpy(process, "obstacle");
-                    } else if(i == 3){
-                        strcpy(process, "target");
-                    } else if(i == 4){
-                        strcpy(process, "blackboard");
+                    while(datareaded[0] == 'e'){
+                        if(readSecure("log.txt", datareaded, i + 2) == -1){
+                            perror("Error reading the log file");
+                            fclose(file);
+                            usleep(10000);
+                            exit(1);
+                        }
                     }
-                    // Check if the difference is less than the period
-                    if (abs(current_time_seconds - time_seconds) < period_seconds) {
-                        fprintf(file, "%s not blocked\n", process);
-                        fflush(file);
-                    } else {
-                        fprintf(file, "%s blocked\n", process);
-                        fflush(file);
-                    }
+
+                    int period = atoi(datareaded);
+                    gettimeofday(&end, NULL); // Tempo iniziale
+
+
+                    elapsed_ms = 0; 
+                    elapsed_ms += (end.tv_usec - start.tv_usec); // Microsecondi in ms
+
+                    if(elapsed_ms < (period*1000)){
+                        char process[20];   
+                        if(i == 0){
+                            strcpy(process, "drone");
+                        } else if(i == 1){
+                            strcpy(process, "input");
+                        } else if(i == 2){
+                            strcpy(process, "obstacle");
+                        } else if(i == 3){
+                            strcpy(process, "target");
+                        } else if(i == 4){
+                            strcpy(process, "blackboard");
+                        }
+
+                        char output[80];
+                        snprintf(output, sizeof(output), "%s responded in %ld ns, period: %d ms -> OK", process, elapsed_ms, period);
+
+                        if(writeSecure("outputWD.txt", output, i + 2, 'o') == -1){
+                            perror("Error writing the output file");
+                            fclose(file);
+                            exit(1);
+                        }  
+                    } else{
+                        printf("Process %d is not responding or has terminated\n", pid[i]);
+                    }                    
                 }
             }
         }

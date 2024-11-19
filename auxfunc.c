@@ -5,7 +5,6 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-#include <time.h>
 #include "auxfunc.h"
 
 int writeSecure(char* filename, char* data, int numeroRiga, char mode) {
@@ -316,10 +315,9 @@ int readSecure(char* filename, char* data, int numeroRiga) {
 //     return 0;
 // }
 
-void handler(int id, int pid, int sleep) {
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
+void handler(int id, int sleep) {
+
     char log_entry[256];
-    snprintf(log_entry, sizeof(log_entry), "%02d:%02d:%02d,%d", tm.tm_hour, tm.tm_min, tm.tm_sec, sleep);
+    snprintf(log_entry, sizeof(log_entry),"%d",sleep);
     writeSecure("log.txt", log_entry, id + 2, 'o');
 }

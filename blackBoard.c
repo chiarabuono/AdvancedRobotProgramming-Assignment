@@ -31,7 +31,7 @@ int pid;
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
-        handler(blackboard,pid,blackboard+2);
+        handler(blackboard,100);
     }
 }
 

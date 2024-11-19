@@ -11,6 +11,6 @@
 
 int writeSecure(char* filename, char* data, int numeroRiga, char mode);
 int readSecure(char* filename, char* data, int numeroRiga);
-void handler(int id, int pid, int sleep);
+void handler(int id, int sleep);
 
 #endif
