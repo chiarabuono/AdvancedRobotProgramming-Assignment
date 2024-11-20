@@ -22,12 +22,48 @@
 
 #define nfds 19
 
+#define HEIGHT 30
+#define WIDTH 80
+
+#define HMARGIN 5
+#define WMARGIN 5
+#define BMARGIN 2
 int pid;
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
         handler(BLACKBOARD,100);
     }
+}
+
+void drawDrone(WINDOW * win, int row, int col){
+    wattron(win, A_BOLD); // Attiva il grassetto
+    wattron(win, COLOR_PAIR(1));   
+    mvwprintw(win, row - 1, col, "|");     
+    mvwprintw(win, row, col + 1, "--");
+    mvwprintw(win, row, col, "+");
+    mvwprintw(win, row + 1, col, "|");     
+    mvwprintw(win, row , col -2, "--");
+    wattroff(win, COLOR_PAIR(1)); 
+    wattroff(win, A_BOLD); // Attiva il grassetto 
+}
+
+void drawObstacle(WINDOW * win, int row, int col){
+    wattron(win, A_BOLD); // Attiva il grassetto
+    wattron(win, COLOR_PAIR(2));   
+    mvwprintw(win, row, col, "0");
+    wattroff(win, COLOR_PAIR(2)); 
+    wattroff(win, A_BOLD); // Attiva il grassetto 
+}
+
+void drawTarget(WINDOW * win, int row, int col, int val) {
+    wattron(win, A_BOLD); // Attiva il grassetto
+    wattron(win, COLOR_PAIR(3));  
+    char val_str[2];
+    sprintf(val_str, "%d", val); // Converte il valore in stringa
+    mvwprintw(win, row, col, "%s", val_str); // Usa un formato esplicito
+    wattroff(win, COLOR_PAIR(3)); 
+    wattroff(win, A_BOLD); // Disattiva il grassetto
 }
 
 int randomSelect(int n) {
@@ -123,9 +159,40 @@ int main(int argc, char *argv[]) {
     
     signal(SIGUSR1, sig_handler);
 
+    initscr();
+    start_color();
+    curs_set(0);
+    noecho();
+
+    WINDOW * win = newwin(HEIGHT, WIDTH, 5, 5); 
+    
+    
+
+    // init_color(COLOR_RED + 1, 1000, 500, 0);  // Creazione arancione
+    // Definizione delle coppie di colori
+    init_pair(1, COLOR_BLUE, COLOR_BLACK);     // Testo blu su sfondo nero
+    init_pair(2, COLOR_RED , COLOR_BLACK);  // Testo arancione su sfondo nero
+    init_pair(3, COLOR_GREEN, COLOR_BLACK);    // Testo verde su sfondo nero
+    
+
     while (1) {
-            
-        //FDs setting for select
+        
+        werase(win);
+        int colDrone = randomSelect(WIDTH - (2*BMARGIN));
+        int rowDrone = randomSelect(HEIGHT - (2*BMARGIN));
+        int colObst = randomSelect(WIDTH - (2*BMARGIN));
+        int rowObst = randomSelect(HEIGHT - (2*BMARGIN));
+        int colTarget = randomSelect(WIDTH - (2*BMARGIN));
+        int rowTarget = randomSelect(HEIGHT - (2*BMARGIN));
+        int val = randomSelect(10);
+
+        box(win, 0, 0);
+        drawDrone(win, rowDrone + HMARGIN + BMARGIN,colDrone + WMARGIN + BMARGIN);
+        drawObstacle(win, rowObst + HMARGIN + BMARGIN,colObst + WMARGIN + BMARGIN);
+        drawTarget(win, rowTarget + HMARGIN + BMARGIN,colTarget + WMARGIN + BMARGIN, val + 1);
+        wrefresh(win);
+        
+        // //FDs setting for select
 
         FD_ZERO(&readfds);
         FD_SET(fds[DRONE][askrd], &readfds);
@@ -137,7 +204,7 @@ int main(int argc, char *argv[]) {
         int ready = 0;
 
         int sel = select(nfds, &readfds, NULL, NULL, &tv);
-
+        
         if (sel == -1) {
             perror("Select error");
             break;
@@ -182,6 +249,7 @@ int main(int argc, char *argv[]) {
                 fflush(file);
             }
         }
+        sleep(1);
     }
 
     return 0;
