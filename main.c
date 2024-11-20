@@ -80,14 +80,14 @@ int main() {
             char *args[] = { NULL, fd_str[i], NULL };
 
             switch (i) {
-                case drone:
+                case DRONE:
                     args[0] = "./drone";
                     if (execvp(args[0], args) == -1) {
                         perror("Errore in execvp per drone");
                         exit(1);
                     }
                     break;
-                case input:
+                case INPUT:
                     char *argi[] = {"konsole", "-e", "./input", fd_str[i], NULL }; 
 
                     if (execvp(argi[0], argi) == -1) {
@@ -95,14 +95,14 @@ int main() {
                         exit(1);
                     }
                     break;
-                case obstacle:
+                case OBSTACLE:
                     args[0] = "./obstacle";
                     if (execvp(args[0], args) == -1) {
                         perror("Errore in execvp per obstacle");
                         exit(1);
                     }
                     break;
-                case target:
+                case TARGET:
                     args[0] = "./target";
                     if (execvp(args[0], args) == -1) {
                         perror("Errore in execvp per target");

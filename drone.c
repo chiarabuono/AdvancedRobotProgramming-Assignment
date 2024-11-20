@@ -316,7 +316,7 @@ Force total_force(Force drone, Force obstacle, Force target) {
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
-        handler(drone, 100);
+        handler(DRONE, 100);
     }
 }
 

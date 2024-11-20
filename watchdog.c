@@ -44,15 +44,15 @@ int main(int argc, char *argv[]) {
         int number = atoi(token + 1);  // Convert the number part to int
 
         if (type == 'i') {
-            pid[input] = number;
+            pid[INPUT] = number;
         } else if (type == 'd') {
-            pid[drone] = number;
+            pid[DRONE] = number;
         } else if (type == 'o') {
-            pid[obstacle] = number;
+            pid[OBSTACLE] = number;
         } else if (type == 't') {
-            pid[target] = number;
+            pid[TARGET] = number;
         } else if (type == 'b') {
-            pid[blackboard] = number;
+            pid[BLACKBOARD] = number;
         }
 
         token = strtok(NULL, ",");
