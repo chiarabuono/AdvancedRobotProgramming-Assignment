@@ -9,7 +9,7 @@
 #include <sys/wait.h>
 #include "auxfunc.h"
 #include <math.h>
-#include <sys/select.h>
+#include <signal.h>
 
 //#include <errno.h>
 
@@ -29,6 +29,7 @@
 // drone
 # define DRONEMASS 1
 
+int pid;
 
 // management obstacles
 int obstacle_threshold = 5; //[m]
@@ -313,6 +314,12 @@ Force total_force(Force drone, Force obstacle, Force target) {
     return total;
 }
 
+void sig_handler(int signo) {
+    if (signo == SIGUSR1) {
+        handler(drone, 100);
+    }
+}
+
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -342,11 +349,11 @@ int main(int argc, char *argv[]) {
         token = strtok(NULL, ",");
     }
 
-    int pid = (int)getpid();
+    pid = (int)getpid();
     char dataWrite [80] ;
     snprintf(dataWrite, sizeof(dataWrite), "d%d,", pid);
     
-    if(writeSecure("log.txt", dataWrite) == -1){
+    if(writeSecure("log.txt", dataWrite, 1, 'a') == -1){
         perror("Error in writing in log.txt");
         exit(1);
     }
@@ -354,6 +361,8 @@ int main(int argc, char *argv[]) {
     //Closing unused pipes heads to avoid deadlock
     close(fds[askrd]);
     close(fds[recwr]);
+
+    signal(SIGUSR1, sig_handler);
 
     const char* directions[MAX_DIRECTIONS];
     int directionCount = MAX_DIRECTIONS;
