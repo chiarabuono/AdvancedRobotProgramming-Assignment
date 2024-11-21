@@ -123,65 +123,132 @@ int main(int argc, char *argv[]) {
     
     signal(SIGUSR1, sig_handler);
 
+    //Drone_bb drone;
+    //Force force_o, force_t;
+    char drone_str[80];
+    char forceO_str[80];
+    char forceT_str[80];
+
     while (1) {
+        // receiving drone position and sending to obstacle.c and target.c
+        // fprintf(file, "Reading drone position. Before %d, %d\n",  drone.x, drone.y);
+        // fflush(file);
+        
+        if (read(fds[DRONE][askrd], &drone_str, sizeof(drone_str)) == -1){
+            fprintf(file,"[BB] Error reading drone position\n");
+            fflush(file);
+            exit(EXIT_FAILURE);
+        }
+
+        fprintf(file, "Sending drone position to [OB]\n");
+        fflush(file);
+        if (write(fds[OBSTACLE][recwr], &drone_str, sizeof(drone_str)) == -1) {
+            fprintf(file,"[BB] Error sending drone position to [OBSTACLE]\n");
+            fflush(file);
+            exit(EXIT_FAILURE);
+        }
+
+        fprintf(file, "Sending drone position to [TA]\n");
+        fflush(file);
+        if (write(fds[TARGET][recwr], &drone_str, sizeof(drone_str)) == -1) {
+            fprintf(file,"[BB] Error sending drone position to [TARGET]\n");
+            fflush(file);
+            exit(EXIT_FAILURE);
+        }
+
+        usleep(100);
+
+        // receiving force from obstacle.c and target.c and sending to drone
+        fprintf(file, "Reading force_o \n");
+        fflush(file);
+        if (read(fds[OBSTACLE][askrd], &forceO_str, sizeof(forceO_str)) == -1){
+            fprintf(file,"[BB] Error reading force_o\n");
+            fflush(file);
+            exit(EXIT_FAILURE);
+        }
+        fprintf(file, "Reading force_t \n");
+        fflush(file);
+        if (read(fds[TARGET][askrd], &forceT_str, sizeof(forceT_str)) == -1){
+            fprintf(file,"[BB] Error reading force_t\n");
+            fflush(file);
+            exit(EXIT_FAILURE);
+        }
+
+        fprintf(file, "Sending force_o \n");
+        fflush(file);
+        if (write(fds[DRONE][recwr], &forceO_str, sizeof(forceO_str)) == -1) {
+            fprintf(file,"[BB] error sending force_o to [DRONE]\n");
+            fflush(file);
+            exit(EXIT_FAILURE);
+        }
+        fprintf(file, "Reading force_t \n");
+        fflush(file);
+        if (write(fds[DRONE][recwr], &forceT_str, sizeof(forceT_str)) == -1) {
+            fprintf(file,"[BB] error sending force_t to [DRONE]\n");
+            fflush(file);
+            exit(EXIT_FAILURE);
+        }
+
+
+        //sleep(1);
             
         //FDs setting for select
 
-        FD_ZERO(&readfds);
-        FD_SET(fds[DRONE][askrd], &readfds);
-        FD_SET(fds[INPUT][askrd], &readfds);
-        FD_SET(fds[OBSTACLE][askrd], &readfds);
-        FD_SET(fds[TARGET][askrd], &readfds); 
+        // FD_ZERO(&readfds);
+        // FD_SET(fds[DRONE][askrd], &readfds);
+        // FD_SET(fds[INPUT][askrd], &readfds);
+        // FD_SET(fds[OBSTACLE][askrd], &readfds);
+        // FD_SET(fds[TARGET][askrd], &readfds); 
 
-        int fdsQueue [4];
-        int ready = 0;
+        // int fdsQueue [4];
+        // int ready = 0;
 
-        int sel = select(nfds, &readfds, NULL, NULL, &tv);
+        // int sel = select(nfds, &readfds, NULL, NULL, &tv);
 
-        if (sel == -1) {
-            perror("Select error");
-            break;
-        } 
+        // if (sel == -1) {
+        //     perror("Select error");
+        //     break;
+        // } 
 
-        if (FD_ISSET(fds[DRONE][askrd], &readfds)) {
-            fdsQueue[ready] = fds[DRONE][askrd];
-            ready++;
-        }
-        if (FD_ISSET(fds[INPUT][askrd], &readfds)) {
-            fdsQueue[ready] = fds[INPUT][askrd];
-            ready++;
-        }
-        if (FD_ISSET(fds[OBSTACLE][askrd], &readfds)) {
-            fdsQueue[ready] = fds[OBSTACLE][askrd];
-            ready++;
-        }
-        if (FD_ISSET(fds[TARGET][askrd], &readfds)) {
-            fdsQueue[ready] = fds[TARGET][askrd];
-            ready++;
-        }
+        // if (FD_ISSET(fds[DRONE][askrd], &readfds)) {
+        //     fdsQueue[ready] = fds[DRONE][askrd];
+        //     ready++;
+        // }
+        // if (FD_ISSET(fds[INPUT][askrd], &readfds)) {
+        //     fdsQueue[ready] = fds[INPUT][askrd];
+        //     ready++;
+        // }
+        // if (FD_ISSET(fds[OBSTACLE][askrd], &readfds)) {
+        //     fdsQueue[ready] = fds[OBSTACLE][askrd];
+        //     ready++;
+        // }
+        // if (FD_ISSET(fds[TARGET][askrd], &readfds)) {
+        //     fdsQueue[ready] = fds[TARGET][askrd];
+        //     ready++;
+        // }
         
 
-        if(ready > 0){
-            unsigned int rand = randomSelect(ready);
-            int selected = fdsQueue[rand];
+        // if(ready > 0){
+        //     unsigned int rand = randomSelect(ready);
+        //     int selected = fdsQueue[rand];
 
-            if (selected == fds[DRONE][askrd]){
-                fprintf(file, "selected drone\n");
-                fflush(file);   
-            } else if (selected == fds[INPUT][askrd]){
-                fprintf(file, "selected input\n");
-                fflush(file);             
-            } else if (selected == fds[OBSTACLE][askrd]){
-                fprintf(file, "selected obstacle\n");
-                fflush(file);
-            }else if (selected == fds[TARGET][askrd]){
-                fprintf(file, "selected target\n");
-                fflush(file);
-            }else{
-                fprintf(file, "Problems\n");
-                fflush(file);
-            }
-        }
+        //     if (selected == fds[DRONE][askrd]){
+        //         fprintf(file, "selected drone\n");
+        //         fflush(file);   
+        //     } else if (selected == fds[INPUT][askrd]){
+        //         fprintf(file, "selected input\n");
+        //         fflush(file);             
+        //     } else if (selected == fds[OBSTACLE][askrd]){
+        //         fprintf(file, "selected obstacle\n");
+        //         fflush(file);
+        //     }else if (selected == fds[TARGET][askrd]){
+        //         fprintf(file, "selected target\n");
+        //         fflush(file);
+        //     }else{
+        //         fprintf(file, "Problems\n");
+        //         fflush(file);
+        //     }
+        // }
     }
 
     return 0;

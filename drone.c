@@ -10,7 +10,6 @@
 #include "auxfunc.h"
 #include <math.h>
 #include <signal.h>
-
 //#include <errno.h>
 
 // process that ask or receive
@@ -20,25 +19,12 @@
 #define recrd 2
 
 #define MAX_DIRECTIONS 80
-#define WINDOW_WIDTH 100
-#define WINDOW_LENGTH 100
 #define PERIOD 100 //[Hz]
-#define NUM_OBSTACLES 10
-#define NUM_TARGET 5
-
-// drone
 # define DRONEMASS 1
+float K = 1.0;
 
 int pid;
 
-// management obstacles
-int obstacle_threshold = 5; //[m]
-int obstacle_mass = 0.1;
-#define NO_SPAWN_DIST 5
-#define ETA 0.2
-
-// management target
-#define MAX_TARGET_VALUE 9
 
 typedef struct {
     float x;
@@ -46,29 +32,14 @@ typedef struct {
     float previous_x[2];   // 0 is one before and 1 is is two before
     float previous_y[2];
 
-} Element;
+} Drone;
 
-typedef struct {
-    int x;
-    int y;
-} Element_bb;
-
-typedef struct {
-    float x[NUM_OBSTACLES];
-    float y[NUM_OBSTACLES];
-} Obstacles;
-
-typedef struct {
-    float x[NUM_TARGET];
-    float y[NUM_TARGET];
-    int value[NUM_TARGET];
-} Targets;
 
 const char* moves[] = {"up", "down", "right", "left", "upleft", "upright", "downleft", "downright"};
-Element drone = {10.0, 20.0, {10.0, 20.0}, {10.0, 20.0}};  
+
 
 // Useful for debugging
-void printPosition(Element p) {
+void printPosition(Drone p) {
     printf("Position: (x = %f, y = %f)\n", p.x, p.y);
     printf("BB Pos: (x = %.0f, y = %.0f)\n", round(p.x), round(p.y));
 }
@@ -81,170 +52,22 @@ void fillDirections(const char* filled[], int* size) {
     }
 }
 
-Obstacles createObstacles(Element drone) {
-    Obstacles obstacles;
-    float x_pos, y_pos;
 
-    for (int i = 0; i < NUM_OBSTACLES; i++) {
-        do {
-            x_pos = rand() % WINDOW_LENGTH;
-            y_pos = rand() % WINDOW_WIDTH;
-        } while (
-            (x_pos >= drone.x - NO_SPAWN_DIST && x_pos <= drone.x + NO_SPAWN_DIST) &&
-            (y_pos >= drone.y - NO_SPAWN_DIST && y_pos <= drone.y + NO_SPAWN_DIST)
-        );
-
-        obstacles.x[i] = x_pos;
-        obstacles.y[i] = y_pos;
-    }
-    return obstacles;
-}
-
-// Simulate obstacle moving
-void obstaclesMoving(Obstacles obstacles) {
-    int num_moves = sizeof(moves) / sizeof(moves[0]);
-    for (int i = 0; i < NUM_OBSTACLES; i++) {
-        const char* move = moves[rand() % num_moves];
-
-        int up_condition = (obstacles.y[i] > 1);
-        int down_condition = (obstacles.y[i] < WINDOW_WIDTH - 1);
-        int right_condition = (obstacles.x[i] < WINDOW_LENGTH - 1);
-        int left_condition = (obstacles.x[i] > 1);
-
-        if (strcmp(move, "up") == 0 && up_condition) obstacles.y[i] -= 1;
-        else if (strcmp(move, "down") == 0 && down_condition) obstacles.y[i] += 1;
-        else if (strcmp(move, "right") == 0 && right_condition) obstacles.x[i] += 1;
-        else if (strcmp(move, "left") == 0 && left_condition) obstacles.x[i] -= 1;
-
-        else if (strcmp(move, "upleft") == 0 && up_condition && left_condition) {
-            obstacles.x[i] -= (float)1.0 / sqrt(2);
-            obstacles.y[i] -= (float)1.0 / sqrt(2);
-        }
-        else if (strcmp(move, "upright") == 0 && up_condition && right_condition) {
-            obstacles.x[i] += (float)1.0 / sqrt(2);
-            obstacles.y[i] -= (float)1.0 / sqrt(2);
-        }
-        else if (strcmp(move, "downleft") == 0 && down_condition && left_condition) {
-            obstacles.x[i] -= (float)1.0 / sqrt(2);
-            obstacles.y[i] += (float)1.0 / sqrt(2);
-        }
-        else if (strcmp(move, "downright") == 0 && down_condition && right_condition) {
-            obstacles.x[i] += (float)1.0 / sqrt(2);
-            obstacles.y[i] += (float)1.0 / sqrt(2);
-        }
-    }
-}
-
-Targets createTargets(Element drone) {
-    Targets targets;
-    int x_pos, y_pos;
-
-    for (int i = 0; i < NUM_TARGET; i++) {
-
-        do {
-            x_pos = rand() % WINDOW_LENGTH;
-            y_pos = rand() % WINDOW_WIDTH;
-
-        } while (
-            (x_pos >= drone.x - NO_SPAWN_DIST && x_pos <= drone.x + NO_SPAWN_DIST) &&
-            (y_pos >= drone.y - NO_SPAWN_DIST && y_pos <= drone.y + NO_SPAWN_DIST)
-        );
-        targets.value[i] = rand() % MAX_TARGET_VALUE;
-        targets.x[i] = x_pos;
-        targets.y[i] = y_pos;
-    }
-    return targets;
-}
-
-void targetsMoving(Targets targets) {
-    int num_moves = sizeof(moves) / sizeof(moves[0]);
-    for (int i = 0; i < NUM_TARGET; i++) {
-        const char* move = moves[rand() % num_moves];
-
-        int up_condition = (targets.y[i] > 1);
-        int down_condition = (targets.y[i] < WINDOW_WIDTH - 1);
-        int right_condition = (targets.x[i] < WINDOW_LENGTH - 1);
-        int left_condition = (targets.x[i] > 1);
-
-        if (strcmp(move, "up") == 0 && up_condition) targets.y[i] -= 1;
-        else if (strcmp(move, "down") == 0 && down_condition) targets.y[i] += 1;
-        else if (strcmp(move, "right") == 0 && right_condition) targets.x[i] += 1;
-        else if (strcmp(move, "left") == 0 && left_condition) targets.x[i] -= 1;
-
-        else if (strcmp(move, "upleft") == 0 && up_condition && left_condition) {
-            targets.x[i] -= (float)1.0 / sqrt(2);
-            targets.y[i] -= (float)1.0 / sqrt(2);
-        }
-        else if (strcmp(move, "upright") == 0 && up_condition && right_condition) {
-            targets.x[i] += (float)1.0 / sqrt(2);
-            targets.y[i] -= (float)1.0 / sqrt(2);
-        }
-        else if (strcmp(move, "downleft") == 0 && down_condition && left_condition) {
-            targets.x[i] -= (float)1.0 / sqrt(2);
-            targets.y[i] += (float)1.0 / sqrt(2);
-        }
-        else if (strcmp(move, "downright") == 0 && down_condition && right_condition) {
-            targets.x[i] += (float)1.0 / sqrt(2);
-            targets.y[i] += (float)1.0 / sqrt(2);
-        }
-    }
-}
-
-typedef struct {
-    float x;
-    float y;
-} Force;
-
-Force obstacle_force(Element* drone, Obstacles obstacles) {
-    Force force = {0, 0};
-    float deltaX, deltaY, distance, distance2;
-
-    for (int i = 0; i < NUM_OBSTACLES; i++) {
-        deltaX = drone->x - obstacles.x[i];
-        deltaY = drone->y - obstacles.y[i];
-        distance2 = pow(deltaX, 2) + pow(deltaY, 2);
-
-        if (distance2 == 0 || distance2 > pow(obstacle_threshold, 2)) continue; // Beyond influence radius
-
-        distance = sqrt(distance2);
-
-        float repulsion = ETA * pow((1 / distance - 1 / obstacle_threshold), 2) / distance;
-        force.x += repulsion * (deltaX / distance); // Normalize direction
-        force.y += repulsion * (deltaY / distance);
-    }
-
-    return force;
-}
-
-Force target_force(Element* drone, Targets targets) {
-    Force force = {0, 0};
-    float deltaX, deltaY, distance, distance2;
-
-    for (int i = 0; i < NUM_TARGET; i++) {
-        deltaX = targets.x[i] - drone->x;
-        deltaY = targets.y[i] - drone->y;
-        distance2 = pow(deltaX, 2) + pow(deltaY, 2);
-
-        distance = sqrt(distance2);
-
-        if (distance < obstacle_threshold) continue; // Ignore very close targets
-
-        float attraction = ETA * distance; // Linear or quadratic attraction
-        force.x += attraction * (deltaX / distance);
-        force.y += attraction * (deltaY / distance);
-    }
-
-    return force;
-}
 
 // Update drone position
-void updatePosition(Element* p, const char* direction, Force force) {
+Drone updatePosition(Drone* p, const char* direction, Force force) {
+
+    Drone updated_drone = {
+        p->x, p->y,
+        p->x, p->y,
+        p->previous_x[0], p->previous_y[0]
+    };
 
     // store current position and slide the previous position to the pre-previous position
-    p->previous_x[1] = p->previous_x[0];
-    p->previous_y[1] = p->previous_y[0];
-    p->previous_x[0] = p->x;
-    p->previous_y[0] = p->y;
+    // p->previous_x[1] = p->previous_x[0];
+    // p->previous_y[1] = p->previous_y[0];
+    // p->previous_x[0] = p->x;
+    // p->previous_y[0] = p->y;
 
     // conditions to stay inside the window
     int up_condition = (p->y > 1) ? 1 : 0;
@@ -253,32 +76,32 @@ void updatePosition(Element* p, const char* direction, Force force) {
     int left_condition = (p->x > 1) ? 1 : 0;
 
 
-    if (strcmp(direction, "up") == 0 && up_condition) p->y -= force.x;
-    else if (strcmp(direction, "down") == 0 && down_condition) p->y += force.y;
-    else if (strcmp(direction, "right") == 0 && right_condition) p->x += force.x;
-    else if (strcmp(direction, "left") == 0 && left_condition) p->x -= force.y;
+    if (strcmp(direction, "up") == 0 && up_condition) updated_drone.x -= force.x;
+    else if (strcmp(direction, "down") == 0 && down_condition) updated_drone.y += force.y;
+    else if (strcmp(direction, "right") == 0 && right_condition) updated_drone.x += force.x;
+    else if (strcmp(direction, "left") == 0 && left_condition) updated_drone.y -= force.y;
 
     else if (strcmp(direction, "upleft") == 0 && up_condition && left_condition) {
-        p->x -= force.x / sqrt(2);
-        p->y -= force.y / sqrt(2);
+        updated_drone.x -= force.x / sqrt(2);
+        updated_drone.y -= force.y / sqrt(2);
         }
     else if (strcmp(direction, "upright") == 0 && up_condition && right_condition) {
-        p->x += force.x / sqrt(2);
-        p->y -= force.y / sqrt(2);
+        updated_drone.x += force.x / sqrt(2);
+        updated_drone.y -= force.y / sqrt(2);
     }
     else if (strcmp(direction, "downleft") == 0 && down_condition && left_condition) {
-        p->x -= force.x / sqrt(2);
-        p->y += force.y / sqrt(2);
+        updated_drone.x -= force.x / sqrt(2);
+        updated_drone.y += force.y / sqrt(2);
     }
     else if (strcmp(direction, "downright") == 0 && down_condition && right_condition) {
-        p->x += force.x / sqrt(2);
-        p->y += force.y / sqrt(2);
+        updated_drone.x += force.x / sqrt(2);
+        updated_drone.y += force.y / sqrt(2);
     }
-
+    return updated_drone;
 }
 
 // Remove first element of the array
-void removeFirstElement(const char* directions[], int* size) {
+void removeFirstElement(const char* directions[], int* size, Drone drone) {
     if (*size == 0) {
         *size = MAX_DIRECTIONS;
         printPosition(drone);
@@ -291,7 +114,14 @@ void removeFirstElement(const char* directions[], int* size) {
     }
 }
 
-Force drone_force(Element* p, float mass, float K) {
+
+Drone_bb DroneToDrone_bb(Drone* drone) {
+    Drone_bb bb = {(int)round(drone->x), (int)round(drone->y)};
+    return bb;
+}
+
+
+Force drone_force(Drone* p, float mass, float K) {
 
     Force force;
 
@@ -364,41 +194,61 @@ int main(int argc, char *argv[]) {
 
     signal(SIGUSR1, sig_handler);
 
+    // Simulate user input
     const char* directions[MAX_DIRECTIONS];
     int directionCount = MAX_DIRECTIONS;
-    fillDirections(directions, &directionCount);        // Simulate user input
+    fillDirections(directions, &directionCount);        
  
 
-    Obstacles obstacles = createObstacles(drone);       // Simulate communication with obstacles
-    
-    Targets targets = createTargets(drone);             // Simulate communication with targets
-
-
-    //for (int i = 0; i < MAX_DIRECTIONS; i++) printf("%s\n", directions[i]);
-
-    float K = 1.0;
+    Drone drone = {10.0, 20.0, {10.0, 20.0}, {10.0, 20.0}};  
+    Drone_bb drone_bb;
     Force force_d, force_o, force_t;
     Force force;
 
+    char drone_str[80];
+    char forceO_str[80];
+    char forceT_str[80];
 
     while (1) {
-        targetsMoving(targets);
-        obstaclesMoving(obstacles);
-
 
         force_d = drone_force(&drone, DRONEMASS, K);
-        force_o = obstacle_force(&drone, obstacles);
-        force_t = target_force(&drone, targets);
+        
+        drone = updatePosition(&drone, directions[0], force);
+        drone_bb = DroneToDrone_bb(&drone);
+
+        snprintf(drone_str, sizeof(drone_str), "%d,%d", drone_bb.x, drone_bb.y);
+
+        if (write(fds[askwr], drone_str, strlen(drone_str)) == -1) { 
+            perror("[DRONE] Error sending drone position");
+            exit(EXIT_FAILURE);
+        }
+        
+        
+        if (read(fds[recrd], &forceO_str, sizeof(forceO_str)) == -1) {
+            perror("[DRONE] Error receiving force_o");
+            exit(EXIT_FAILURE);
+        }
+    //     if (sscanf(forceO_str, "%f,%f", &force_o.x, &force_o.y) != 2) {
+    //     fprintf(file, "Error parsing force: %s\n", forceO_str);
+    //     fflush(file);
+    //     exit(EXIT_FAILURE);
+    // }
+        fprintf(file, "force_o\n");
+        fflush(file);
+
+        fromStringtoForce(&force_o, forceO_str, file);
+        
+        if (read(fds[recrd], &forceT_str, sizeof(forceT_str)) == -1) {
+            perror("[DRONE] Error receiving force_t");
+            exit(EXIT_FAILURE);
+        }
+        fprintf(file, "force_o\n");
+        fflush(file);
+        fromStringtoForce(&force_t, forceT_str, file);
+
         force = total_force(force_d, force_o, force_t);
 
-        
-        updatePosition(&drone, directions[0], force);
-        if (drone.x < 0 || drone.y < 0 || drone.x > WINDOW_LENGTH || drone.y > WINDOW_WIDTH) printf("ERROR");
-
-        //printf("Removing direction: %s\n", directions[0]);
-        removeFirstElement(directions, &directionCount);
-
-
+        removeFirstElement(directions, &directionCount, drone);
         usleep(1000000/PERIOD); 
     }
     

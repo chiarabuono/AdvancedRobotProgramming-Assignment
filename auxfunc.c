@@ -176,6 +176,23 @@ int readSecure(char* filename, char* data, int numeroRiga) {
 }
 
 
+void fromStringtoDrone(Drone_bb *drone, const char *drone_str, FILE *file) {
+    if (sscanf(drone_str, "%d,%d", &drone->x, &drone->y) != 2) {
+        fprintf(file, "Error parsing drone position: %s\n", drone_str);
+        fflush(file);
+        exit(EXIT_FAILURE);
+    }
+}
+
+void fromStringtoForce(Force *force, const char *force_str, FILE *file) {
+    if (sscanf(force_str, "%f,%f", &force->x, &force->y) != 2) {
+        fprintf(file, "Error parsing force: %s\n", force_str);
+        fflush(file);
+        exit(EXIT_FAILURE);
+    }
+}
+
+
 // QUESTA FUNZIONE CONTIENE LA POSSIBILITÀ DI FARE ERASE MA DA PROBLEMI,IL PRIMO PROCESSO CHE PROVA A SCRIVERE NON SCRIVE
 
 // int writeSecure(char* filename, char* data, int numeroRiga, char mode) {
