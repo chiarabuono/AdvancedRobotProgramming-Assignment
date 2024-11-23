@@ -29,12 +29,23 @@
 #define WMARGIN 5
 #define BMARGIN 2
 int pid;
+// int nh = 1000, nw = 1000;
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
         handler(BLACKBOARD,100);
     }
 }
+
+// void resizeHandler(int sig){
+//     getmaxyx(stdscr, nh, nw);  /* get the new screen size */
+//     endwin();
+//     initscr();
+//     start_color();
+//     curs_set(0);
+//     noecho();
+//     win = newwin(nh-3, nw-3, 0, 0); 
+//     }
 
 void drawDrone(WINDOW * win, int row, int col){
     wattron(win, A_BOLD); // Attiva il grassetto
@@ -158,17 +169,17 @@ int main(int argc, char *argv[]) {
     tv.tv_usec = 1000;
     
     signal(SIGUSR1, sig_handler);
+    
 
     initscr();
     start_color();
     curs_set(0);
     noecho();
-
+    cbreak();
+    //getmaxyx(stdscr, nh, nw);
     WINDOW * win = newwin(HEIGHT, WIDTH, 5, 5); 
     
-    
 
-    // init_color(COLOR_RED + 1, 1000, 500, 0);  // Creazione arancione
     // Definizione delle coppie di colori
     init_pair(1, COLOR_BLUE, COLOR_BLACK);     // Testo blu su sfondo nero
     init_pair(2, COLOR_RED , COLOR_BLACK);  // Testo arancione su sfondo nero
@@ -185,8 +196,8 @@ int main(int argc, char *argv[]) {
         int colTarget = randomSelect(WIDTH - (2*BMARGIN));
         int rowTarget = randomSelect(HEIGHT - (2*BMARGIN));
         int val = randomSelect(10);
-
         box(win, 0, 0);
+       
         drawDrone(win, rowDrone + HMARGIN + BMARGIN,colDrone + WMARGIN + BMARGIN);
         drawObstacle(win, rowObst + HMARGIN + BMARGIN,colObst + WMARGIN + BMARGIN);
         drawTarget(win, rowTarget + HMARGIN + BMARGIN,colTarget + WMARGIN + BMARGIN, val + 1);

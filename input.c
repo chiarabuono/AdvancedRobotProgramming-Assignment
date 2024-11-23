@@ -107,7 +107,7 @@ void mainMenu(){
     mvwprintw(win, 12, 17, "%s", "n - no"); 
     wrefresh(win);
     drawBtn(99, MENU); //to make all the buttons white
-    sleep(1);
+    sleep(5);
     int ch = getch();
     if (ch == 110){
         for(int i = 0; i < BUTTONS; i++){
@@ -174,11 +174,12 @@ int main(int argc, char *argv[]) {
     start_color();
     curs_set(0);
     noecho();
+    cbreak();
     init_pair(1, COLOR_RED , COLOR_BLACK);  // Testo arancione su sfondo nero
 
     win = newwin(HEIGHT, WIDTH, 5, 5);
 
-    mainMenu();
+    //mainMenu();
 
     btnSetUp(BTNPOSR,BTNPOSC);
  
@@ -191,7 +192,7 @@ int main(int argc, char *argv[]) {
 
         int btn;
         int ch = getch();
-        
+        // int ch = 99;
         if (ch == btnValues[0]) {
             btn = LEFTUP;
         } else if (ch == btnValues[1]) {
@@ -213,7 +214,6 @@ int main(int argc, char *argv[]) {
         } else{
             btn = 99;   //Any of the direction buttons pressed
         } 
-
 
         drawBtn(btn, DEFAULT);
         usleep(100000);
