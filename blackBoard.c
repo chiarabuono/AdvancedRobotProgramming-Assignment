@@ -258,9 +258,14 @@ int main(int argc, char *argv[]) {
     colTarget = randomSelect(WIDTH - (2*BMARGIN));
     rowTarget = randomSelect(HEIGHT - (2*BMARGIN));
     val = randomSelect(10);
-
+    //Drone_bb drone;
+    //Force force_o, force_t;
+    char drone_str[80];
+    char forceO_str[80];
+    char forceT_str[80];
+  
     while (1) {
-
+        
         reset += PERIODBB/1000000;
         setPermissions();
 
@@ -279,8 +284,13 @@ int main(int argc, char *argv[]) {
         FD_SET(fds[OBSTACLE][askrd], &readfds);
         FD_SET(fds[TARGET][askrd], &readfds); 
 
-        int fdsQueue [4];
-        int ready = 0;
+        fprintf(file, "Sending drone position to [OB]\n");
+        fflush(file);
+        if (write(fds[OBSTACLE][recwr], &drone_str, sizeof(drone_str)) == -1) {
+            fprintf(file,"[BB] Error sending drone position to [OBSTACLE]\n");
+            fflush(file);
+            exit(EXIT_FAILURE);
+        }
 
         int sel = select(nfds, &readfds, NULL, NULL, &tv);
         
@@ -289,23 +299,36 @@ int main(int argc, char *argv[]) {
             break;
         } 
 
-        if (FD_ISSET(fds[DRONE][askrd], &readfds)) {
-            fdsQueue[ready] = fds[DRONE][askrd];
-            ready++;
+        // receiving force from obstacle.c and target.c and sending to drone
+        fprintf(file, "Reading force_o \n");
+        fflush(file);
+        if (read(fds[OBSTACLE][askrd], &forceO_str, sizeof(forceO_str)) == -1){
+            fprintf(file,"[BB] Error reading force_o\n");
+            fflush(file);
+            exit(EXIT_FAILURE);
         }
-        if (FD_ISSET(fds[INPUT][askrd], &readfds)) {
-            fdsQueue[ready] = fds[INPUT][askrd];
-            ready++;
+        fprintf(file, "Reading force_t \n");
+        fflush(file);
+        if (read(fds[TARGET][askrd], &forceT_str, sizeof(forceT_str)) == -1){
+            fprintf(file,"[BB] Error reading force_t\n");
+            fflush(file);
+            exit(EXIT_FAILURE);
         }
-        if (FD_ISSET(fds[OBSTACLE][askrd], &readfds)) {
-            fdsQueue[ready] = fds[OBSTACLE][askrd];
-            ready++;
+
+        fprintf(file, "Sending force_o \n");
+        fflush(file);
+        if (write(fds[DRONE][recwr], &forceO_str, sizeof(forceO_str)) == -1) {
+            fprintf(file,"[BB] error sending force_o to [DRONE]\n");
+            fflush(file);
+            exit(EXIT_FAILURE);
         }
-        if (FD_ISSET(fds[TARGET][askrd], &readfds)) {
-            fdsQueue[ready] = fds[TARGET][askrd];
-            ready++;
+        fprintf(file, "Reading force_t \n");
+        fflush(file);
+        if (write(fds[DRONE][recwr], &forceT_str, sizeof(forceT_str)) == -1) {
+            fprintf(file,"[BB] error sending force_t to [DRONE]\n");
+            fflush(file);
+            exit(EXIT_FAILURE);
         }
-        
 
         if(ready > 0){
             unsigned int rand = randomSelect(ready);
