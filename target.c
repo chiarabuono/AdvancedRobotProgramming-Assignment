@@ -20,12 +20,6 @@
 // management target
 #define MAX_TARGET_VALUE 9
 
-typedef struct {
-    float x[NUM_TARGET];
-    float y[NUM_TARGET];
-    int value[NUM_TARGET];
-} Targets;
-
 int pid;
 
 void sig_handler(int signo) {
@@ -90,26 +84,6 @@ void targetsMoving(Targets targets) {
     }
 }
 
-Force target_force(Drone_bb* drone, Targets targets) {
-    Force force = {0, 0};
-    float deltaX, deltaY, distance, distance2;
-
-    for (int i = 0; i < NUM_TARGET; i++) {
-        deltaX = targets.x[i] - drone->x;
-        deltaY = targets.y[i] - drone->y;
-        distance2 = pow(deltaX, 2) + pow(deltaY, 2);
-
-        distance = sqrt(distance2);
-
-        if (distance < FORCE_THRESHOLD) continue; // Ignore very close targets
-
-        float attraction = ETA * distance; // Linear or quadratic attraction
-        force.x += attraction * (deltaX / distance);
-        force.y += attraction * (deltaY / distance);
-    }
-
-    return force;
-}
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -155,31 +129,37 @@ int main(int argc, char *argv[]) {
     signal(SIGUSR1, sig_handler);
 
     Drone_bb drone;
-    Targets targets = createTargets(drone);             // Create target vector
-    Force force_t;
+    Targets targets;
 
     char drone_str[80];
-    char force_str[80];
+    char str[len_str_targets];
     
     while (1) {
-        
-
+        // fprintf(file, "Reading drone position\n");
+        // fflush(file);
         if (read(fds[recrd], &drone_str, sizeof(drone_str)) == -1){
             perror("[TA] Error reading drone position from [BB]");
             exit(EXIT_FAILURE);
         }
-        fromStringtoDrone(&drone, drone_str, file);
 
-        force_t = target_force(&drone, targets);
-        snprintf(force_str, sizeof(force_str), "%f,%f", force_t.x, force_t.y);
-        if (write(fds[askwr], &force_str, sizeof(force_str)) == -1) {
-            perror("[TA] Error sending force_t to [BB]");
+        // fprintf(file, "Computing target position\n");
+        // fflush(file);
+
+        fromStringtoDrone(&drone, drone_str, file);
+        targets = createTargets(drone);             // Create target vector
+        fromPositiontoString(targets.x, targets.y, NUM_TARGET, str, sizeof(str), file);
+
+        // fprintf(file, "Sending target position to [BB]\n");
+        // fflush(file);
+        if (write(fds[askwr], &str, sizeof(str)) == -1) {
+            perror("[TA] Error sending target position to [BB]");
             exit(EXIT_FAILURE);
         }
-        targetsMoving(targets);
+        // targetsMoving(targets);
+
     }
     
-    // Chiudiamo il file
+    // Close the file
     fclose(file);
     return 0;
 }

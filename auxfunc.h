@@ -19,6 +19,9 @@
 
 #define FORCE_THRESHOLD 5 //[m]
 
+extern int len_str_targets;
+extern int len_str_obstacles;
+
 typedef struct {
     int x;
     int y;
@@ -30,11 +33,27 @@ typedef struct {
     float y;
 } Force;
 
+typedef struct {
+    int x[NUM_TARGET];
+    int y[NUM_TARGET];
+    int value[NUM_TARGET];
+} Targets;
+
+typedef struct
+{
+    int x[NUM_OBSTACLES];
+    int y[NUM_OBSTACLES];
+} Obstacles;
+
 int writeSecure(char* filename, char* data, int numeroRiga, char mode);
 int readSecure(char* filename, char* data, int numeroRiga);
 void handler(int id, int sleep);
 
 void fromStringtoDrone(Drone_bb *drone, const char *drone_str, FILE *file);
 void fromStringtoForce(Force *force, const char *force_str, FILE *file);
+void fromStringtoPositions(Drone_bb *drone, int *x, int *y, const char *str, FILE *file);
+void fromStringtoPositionsWithTwoTargets(int *x1, int *y1, int *x2, int *y2, const char *str, FILE *file);
+void fromPositiontoString(int *x, int *y, int len, char *str, size_t str_size, FILE *file);
+void concatenateStr(const char *str1, const char *str2, char *output, size_t output_size, FILE *file);
 
 #endif

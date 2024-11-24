@@ -17,26 +17,26 @@
 #define recwr 3
 #define recrd 2
 
-typedef struct
-{
-    float x[NUM_OBSTACLES];
-    float y[NUM_OBSTACLES];
-} Obstacles;
 
 #define OBSTACLE_MASS 0.1
 
 int pid;
 
-void sig_handler(int signo)
-{
+void sig_handler(int signo) {
     if (signo == SIGUSR1)
     {
         handler(OBSTACLE, 100);
     }
 }
 
-Obstacles createObstacles(Drone_bb drone)
-{
+int canSpawn(int x_pos, int y_pos, Targets targets) {
+    for (int i = 0; i < NUM_TARGET; i++) {
+        if (x_pos - targets.x[i] <= NO_SPAWN_DIST && y_pos - targets.y[i] <= NO_SPAWN_DIST) return 0; 
+    }
+    return 1;
+}
+
+Obstacles createObstacles(Drone_bb drone, Targets targets) {
     Obstacles obstacles;
     float x_pos, y_pos;
 
@@ -48,14 +48,14 @@ Obstacles createObstacles(Drone_bb drone)
             y_pos = rand() % WINDOW_WIDTH;
         } while (
             (x_pos >= drone.x - NO_SPAWN_DIST && x_pos <= drone.x + NO_SPAWN_DIST) &&
-            (y_pos >= drone.y - NO_SPAWN_DIST && y_pos <= drone.y + NO_SPAWN_DIST));
+            (y_pos >= drone.y - NO_SPAWN_DIST && y_pos <= drone.y + NO_SPAWN_DIST) && 
+            canSpawn(x_pos, y_pos, targets) == 1);
 
         obstacles.x[i] = x_pos;
         obstacles.y[i] = y_pos;
     }
     return obstacles;
 }
-
 // Simulate obstacle moving
 const char *moves[] = {"up", "down", "right", "left", "upleft", "upright", "downleft", "downright"};
 
@@ -103,42 +103,17 @@ void obstaclesMoving(Obstacles obstacles)
     }
 }
 
-Force obstacle_force(Drone_bb *drone, Obstacles obstacles)
-{
-    Force force = {0, 0};
-    float deltaX, deltaY, distance, distance2;
-
-    for (int i = 0; i < NUM_OBSTACLES; i++)
-    {
-        deltaX = drone->x - obstacles.x[i];
-        deltaY = drone->y - obstacles.y[i];
-        distance2 = pow(deltaX, 2) + pow(deltaY, 2);
-
-        if (distance2 == 0 || distance2 > pow(FORCE_THRESHOLD, 2))
-            continue; // Beyond influence radius
-
-        distance = sqrt(distance2);
-
-        float repulsion = ETA * pow((1 / distance - 1 / FORCE_THRESHOLD), 2) / distance;
-        force.x += repulsion * (deltaX / distance); // Normalize direction
-        force.y += repulsion * (deltaY / distance);
-    }
-
-    return force;
-}
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
-    {
+    if (argc < 2) {
         fprintf(stderr, "Uso: %s <fd_str>\n", argv[0]);
         exit(1);
     }
 
     // Opening log file
     FILE *file = fopen("outputobstacle.txt", "a");
-    if (file == NULL)
-    {
+    if (file == NULL) {
         perror("Errore nell'apertura del file");
         exit(1);
     }
@@ -152,8 +127,7 @@ int main(int argc, char *argv[])
     token = strtok(NULL, ",");
 
     // FDs extraction
-    while (token != NULL && index < 4)
-    {
+    while (token != NULL && index < 4) {
         fds[index] = atoi(token);
         index++;
         token = strtok(NULL, ",");
@@ -163,8 +137,7 @@ int main(int argc, char *argv[])
     char dataWrite[80];
     snprintf(dataWrite, sizeof(dataWrite), "o%d,", pid);
 
-    if (writeSecure("log.txt", dataWrite, 1, 'a') == -1)
-    {
+    if (writeSecure("log.txt", dataWrite, 1, 'a') == -1) {
         perror("Error in writing in log.txt");
         exit(1);
     }
@@ -175,33 +148,43 @@ int main(int argc, char *argv[])
     signal(SIGUSR1, sig_handler);
 
     Drone_bb drone;
-    char drone_str[80];
-    char force_str[80];
+    Targets targets;
+    Obstacles obstacles;
 
-    Obstacles obstacles = createObstacles(drone); // Create obstacles vector
-    Force force_o;
+    char drone_str[10];
+    char targets_str[len_str_targets];
+    char obstacle_str[len_str_obstacles];
+    char dronetarget_str[10 + len_str_targets];
 
 
     while (1) {
 
-        if (read(fds[recrd], &drone_str, sizeof(drone_str)) == -1){
-            perror("[OB] Error reading drone position from [BB]");
-            exit(EXIT_FAILURE);
-        }
-        fromStringtoDrone(&drone, drone_str, file);
-
-        force_o = obstacle_force(&drone, obstacles);
-        snprintf(force_str, sizeof(force_str), "%f,%f", force_o.x, force_o.y);
-
-        if (write(fds[askwr], &force_str, sizeof(force_str)) == -1) {
-            perror("[OB] Error sending force_o to [BB]");
+        // Read drone position
+        if (read(fds[recrd], &dronetarget_str, sizeof(dronetarget_str)) == -1){
+            perror("[OB] Error reading drone and target position from [BB]");
             exit(EXIT_FAILURE);
         }
 
-        obstaclesMoving(obstacles);
+        // fprintf(file, "Reading drone and target position: %s\n", dronetarget_str);
+        // fflush(file);
+
+        fromStringtoPositions(&drone, targets.x, targets.y, dronetarget_str, file);
+        obstacles = createObstacles(drone, targets);
+
+        // Sending obstacles positions
+        fromPositiontoString(obstacles.x, obstacles.y, NUM_OBSTACLES, obstacle_str, sizeof(obstacle_str), file);
+
+        // fprintf(file, "Sending obstacle positions: %s\n", obstacle_str);
+        // fflush(file);
+        if (write(fds[askwr], &obstacle_str, sizeof(obstacle_str)) == -1) {
+            perror("[TA] Error sending obstacle positions to [BB]");
+            exit(EXIT_FAILURE);
+        }
+
+        // obstaclesMoving(obstacles);
     }
 
-    // Chiudiamo il file
+    // Close file
     fclose(file);
     return 0;
 }
