@@ -19,8 +19,9 @@
 #define recrd 2
 
 #define MAX_DIRECTIONS 80
-#define PERIOD 100 //[Hz]
+#define PERIOD 50 //[Hz]
 #define DRONEMASS 1
+
 float K = 1.0;
 
 int pid;
@@ -33,8 +34,6 @@ typedef struct
     float previous_y[2];
 
 } Drone;
-
-const char *moves[] = {"up", "down", "right", "left", "upleft", "upright", "downleft", "downright"};
 
 // Useful for debugging
 void printPosition(Drone p)
@@ -277,12 +276,27 @@ int main(int argc, char *argv[])
     if (write(fds[askwr], drone_str, strlen(drone_str)) == -1) {
         perror("[DRONE] Error sending drone position");
         exit(EXIT_FAILURE);
-        }
+    }
+
+    if (read(fds[recrd], &data, sizeof(data)) == -1){
+        perror("[DRONE] Error receiving map from BB");
+        exit(EXIT_FAILURE);
+    } 
+
+    fromStringtoPositionsWithTwoTargets(targets.x, targets.y, obstacles.x, obstacles.y, data, file);
+            
+    //sleep(1);
 
     while (1)
     {
         // if (write(fds[askwr], drone_str, strlen(drone_str)) == -1) perror("[DRONE] Error sending drone position");
         // if (read(fds[recrd], &forceO_str, sizeof(forceO_str)) == -1) perror("[DRONE] Error receiving force_o");
+        if (write(fds[askwr], "R", 2) == -1) {
+                perror("[DRONE] Ready not sended correctly\n");
+                exit(EXIT_FAILURE);
+            }
+        fprintf(file, "[DRONE] Drone ready\n");
+        fflush(file);
 
         bytesRead = read(fds[recrd], &data, sizeof(data));
         if (bytesRead == -1) {
@@ -293,8 +307,8 @@ int main(int argc, char *argv[])
         
         case 'M':
             fromStringtoPositionsWithTwoTargets(targets.x, targets.y, obstacles.x, obstacles.y, data, file);
-            // fprintf(file, "[M] Read new map\n");
-            // fflush(file);
+            fprintf(file, "[M] Read new map\n");
+            fflush(file);
 
             // computing new force on the drone
             force_t = target_force(&drone, targets);
@@ -304,15 +318,15 @@ int main(int argc, char *argv[])
 
             // 'A' case
 
-            // fprintf(file, "[M] Updating drone position\n");
-            // fflush(file);
+            fprintf(file, "[M] Updating drone position\n");
+            fflush(file);
             drone = updatePosition(&drone, directions[0], force);
             drone_bb = DroneToDrone_bb(&drone);
             
 
             snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
-            // fprintf(file, "[M] Drone position (%d;%d) -> Sending drone position: %s\n",drone_bb.x, drone_bb.y, drone_str);
-            // fflush(file);
+            fprintf(file, "[M] Drone position (%d;%d) -> Sending drone position: %s\n",drone_bb.x, drone_bb.y, drone_str);
+            fflush(file);
 
             // drone sends its position to BB
             if (write(fds[askwr], drone_str, strlen(drone_str)) == -1) {
@@ -329,14 +343,14 @@ int main(int argc, char *argv[])
             force_d = drone_force(&drone, DRONEMASS, K);
             force = total_force(force_d, force_o, force_t);
 
-            // fprintf(file, "[A] Updating drone position\n");
-            // fflush(file);
+            fprintf(file, "[A] Updating drone position\n");
+            fflush(file);
             drone = updatePosition(&drone, directions[0], force);
             drone_bb = DroneToDrone_bb(&drone);
             
-            // snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
-            // fprintf(file, "[A] Sending drone position: %s\n", drone_str);
-
+            snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
+            fprintf(file, "[A] Sending drone position: %s\n", drone_str);
+            fflush(file);
             // drone sends its position to BB
             if (write(fds[askwr], drone_str, strlen(drone_str)) == -1) {
                 perror("[DRONE] Error sending drone position");

@@ -49,7 +49,6 @@ Targets createTargets(Drone_bb drone) {
     return targets;
 }
 
-const char* moves[] = {"up", "down", "right", "left", "upleft", "upright", "downleft", "downright"};
 void targetsMoving(Targets targets) {
     int num_moves = sizeof(moves) / sizeof(moves[0]);
     for (int i = 0; i < NUM_TARGET; i++) {
@@ -135,22 +134,22 @@ int main(int argc, char *argv[]) {
     char str[len_str_targets];
     
     while (1) {
-        // fprintf(file, "Reading drone position\n");
-        // fflush(file);
+        fprintf(file, "Reading drone position\n");
+        fflush(file);
         if (read(fds[recrd], &drone_str, sizeof(drone_str)) == -1){
             perror("[TA] Error reading drone position from [BB]");
             exit(EXIT_FAILURE);
         }
 
-        // fprintf(file, "Computing target position\n");
-        // fflush(file);
+        fprintf(file, "Computing target position\n");
+        fflush(file);
 
         fromStringtoDrone(&drone, drone_str, file);
         targets = createTargets(drone);             // Create target vector
         fromPositiontoString(targets.x, targets.y, NUM_TARGET, str, sizeof(str), file);
 
-        // fprintf(file, "Sending target position to [BB]\n");
-        // fflush(file);
+        fprintf(file, "Sending target position to [BB]\n");
+        fflush(file);
         if (write(fds[askwr], &str, sizeof(str)) == -1) {
             perror("[TA] Error sending target position to [BB]");
             exit(EXIT_FAILURE);

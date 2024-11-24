@@ -9,8 +9,8 @@
 #define TARGET 3 
 #define BLACKBOARD 4
 
-#define WINDOW_WIDTH 100
-#define WINDOW_LENGTH 100
+#define WINDOW_WIDTH 80
+#define WINDOW_LENGTH 30
 
 #define NUM_TARGET 5
 #define NUM_OBSTACLES 10
@@ -19,8 +19,11 @@
 
 #define FORCE_THRESHOLD 5 //[m]
 
-extern int len_str_targets;
-extern int len_str_obstacles;
+#define len_str_targets 6 * NUM_TARGET + 2
+#define len_str_obstacles 6 * NUM_OBSTACLES + 2
+
+extern const char *moves[9];
+
 
 typedef struct {
     int x;

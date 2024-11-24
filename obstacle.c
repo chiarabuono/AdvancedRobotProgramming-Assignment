@@ -57,7 +57,6 @@ Obstacles createObstacles(Drone_bb drone, Targets targets) {
     return obstacles;
 }
 // Simulate obstacle moving
-const char *moves[] = {"up", "down", "right", "left", "upleft", "upright", "downleft", "downright"};
 
 void obstaclesMoving(Obstacles obstacles)
 {
@@ -165,8 +164,8 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
 
-        // fprintf(file, "Reading drone and target position: %s\n", dronetarget_str);
-        // fflush(file);
+        fprintf(file, "Reading drone and target position: %s\n", dronetarget_str);
+        fflush(file);
 
         fromStringtoPositions(&drone, targets.x, targets.y, dronetarget_str, file);
         obstacles = createObstacles(drone, targets);
@@ -174,8 +173,8 @@ int main(int argc, char *argv[])
         // Sending obstacles positions
         fromPositiontoString(obstacles.x, obstacles.y, NUM_OBSTACLES, obstacle_str, sizeof(obstacle_str), file);
 
-        // fprintf(file, "Sending obstacle positions: %s\n", obstacle_str);
-        // fflush(file);
+        fprintf(file, "Sending obstacle positions: %s\n", obstacle_str);
+        fflush(file);
         if (write(fds[askwr], &obstacle_str, sizeof(obstacle_str)) == -1) {
             perror("[TA] Error sending obstacle positions to [BB]");
             exit(EXIT_FAILURE);
