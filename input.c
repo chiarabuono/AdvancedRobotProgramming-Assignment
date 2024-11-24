@@ -185,6 +185,16 @@ int main(int argc, char *argv[]) {
  
     while (1) {
 
+        //message to bb init
+        char msg [12];
+
+        for(int i = 0; i < 12; i++){
+            msg[i] = '\0';
+        }
+        
+        msg[0] = 'I';
+        msg[1] = ';';
+        //Refresh the auxiliary window
         werase(win);
         box(win, 0, 0);       
         wrefresh(win);
@@ -195,27 +205,46 @@ int main(int argc, char *argv[]) {
         // int ch = 99;
         if (ch == btnValues[0]) {
             btn = LEFTUP;
+            strcat(msg, moves[btn]);
         } else if (ch == btnValues[1]) {
             btn = UP;
+            strcat(msg, moves[btn]);
         } else if (ch == btnValues[2]) {
             btn = RIGHTUP;
+            strcat(msg, moves[btn]);
         } else if (ch == btnValues[3]) {
             btn = LEFT;
+            strcat(msg, moves[btn]);
         } else if (ch == btnValues[4]) {
             btn = CENTER;
+            strcat(msg, moves[btn]);
         } else if (ch == btnValues[5]) {
             btn = RIGHT;
+            strcat(msg, moves[btn]);
         } else if (ch == btnValues[6]) {
             btn = LEFTDOWN;
+            strcat(msg, moves[btn]);
         } else if (ch == btnValues[7]) {
             btn = DOWN;
+            strcat(msg, moves[btn]);
         } else if (ch == btnValues[8]) {
             btn = RIGHTDOWN;
+            strcat(msg, moves[btn]);
         } else{
             btn = 99;   //Any of the direction buttons pressed
         } 
 
         drawBtn(btn, DEFAULT);
+        fprintf(file,"msg: %s\n", msg);
+        fflush(file);
+        // Send the message to the blackboard
+        char rec[2];
+        write(fds[askwr],msg,strlen(msg) + 1);
+        read(fds[recrd], &rec, 2);
+        if(strcmp(rec,"A") == 0){
+           ;
+        }
+
         usleep(100000);
     }
     
