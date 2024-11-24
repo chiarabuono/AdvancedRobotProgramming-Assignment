@@ -22,12 +22,105 @@
 
 #define nfds 19
 
+#define HEIGHT 30
+#define WIDTH 80
+
+#define HMARGIN 5
+#define WMARGIN 5
+#define BMARGIN 2
+
+#define PERIODBB 10000  // [us]
+
+#define NUM_OBSTACLES 10
+#define NUM_TARGET 5
+
+// dronex;droney;target[x1],...,target[xn];target[y1],...,target[yn];
+typedef struct {
+    int x;
+    int y;
+} Drone_bb;
+
+typedef struct {
+    float x;
+    float y;
+} Force;
+
+typedef struct {
+    float x[NUM_TARGET];
+    float y[NUM_TARGET];
+    int value[NUM_TARGET];
+} Targets;
+
+typedef struct
+{
+    float x[NUM_OBSTACLES];
+    float y[NUM_OBSTACLES];
+} Obstacles;
+
+
 int pid;
+float reset_period = 10; // [s]
+float reset = 0;
+
+int pTarget = 0;
+int pObst = 0;
+int pDrone = 1;
+int pInput = 1;
+
+int colObst;
+int rowObst;
+int colTarget;
+int rowTarget;
+int val;
+
+char ack [2] = "A\0";
+
+// int nh = 1000, nw = 1000;
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
         handler(BLACKBOARD,100);
     }
+}
+
+// void resizeHandler(int sig){
+//     getmaxyx(stdscr, nh, nw);  /* get the new screen size */
+//     endwin();
+//     initscr();
+//     start_color();
+//     curs_set(0);
+//     noecho();
+//     win = newwin(nh-3, nw-3, 0, 0); 
+//     }
+
+void drawDrone(WINDOW * win, int row, int col){
+    wattron(win, A_BOLD); // Attiva il grassetto
+    wattron(win, COLOR_PAIR(1));   
+    mvwprintw(win, row - 1, col, "|");     
+    mvwprintw(win, row, col + 1, "--");
+    mvwprintw(win, row, col, "+");
+    mvwprintw(win, row + 1, col, "|");     
+    mvwprintw(win, row , col -2, "--");
+    wattroff(win, COLOR_PAIR(1)); 
+    wattroff(win, A_BOLD); // Attiva il grassetto 
+}
+
+void drawObstacle(WINDOW * win, int row, int col){
+    wattron(win, A_BOLD); // Attiva il grassetto
+    wattron(win, COLOR_PAIR(2));   
+    mvwprintw(win, row, col, "0");
+    wattroff(win, COLOR_PAIR(2)); 
+    wattroff(win, A_BOLD); // Attiva il grassetto 
+}
+
+void drawTarget(WINDOW * win, int row, int col, int val) {
+    wattron(win, A_BOLD); // Attiva il grassetto
+    wattron(win, COLOR_PAIR(3));  
+    char val_str[2];
+    sprintf(val_str, "%d", val); // Converte il valore in stringa
+    mvwprintw(win, row, col, "%s", val_str); // Usa un formato esplicito
+    wattroff(win, COLOR_PAIR(3)); 
+    wattroff(win, A_BOLD); // Disattiva il grassetto
 }
 
 int randomSelect(int n) {
@@ -50,6 +143,25 @@ int randomSelect(int n) {
     return random_number % n;
 }
 
+void setPermissions(){
+    if (reset >= reset_period){
+        reset = 0;
+        pTarget = 1;
+        pObst = 1;
+
+        //For testing purposes
+
+        colObst = randomSelect(WIDTH - (2*BMARGIN));
+        rowObst = randomSelect(HEIGHT - (2*BMARGIN));
+        colTarget = randomSelect(WIDTH - (2*BMARGIN));
+        rowTarget = randomSelect(HEIGHT - (2*BMARGIN));
+        val = randomSelect(10);
+    }
+    else{
+        pTarget = 0;
+        pObst = 0;
+    }
+}
 
 int main(int argc, char *argv[]) {
 
@@ -122,23 +234,55 @@ int main(int argc, char *argv[]) {
     tv.tv_usec = 1000;
     
     signal(SIGUSR1, sig_handler);
+    
 
+    initscr();
+    start_color();
+    curs_set(0);
+    noecho();
+    cbreak();
+    //getmaxyx(stdscr, nh, nw);
+    WINDOW * win = newwin(HEIGHT, WIDTH, 5, 5); 
+    
+
+    // Definizione delle coppie di colori
+    init_pair(1, COLOR_BLUE, COLOR_BLACK);     // Testo blu su sfondo nero
+    init_pair(2, COLOR_RED , COLOR_BLACK);  // Testo arancione su sfondo nero
+    init_pair(3, COLOR_GREEN, COLOR_BLACK);    // Testo verde su sfondo nero
+    
+    int colDrone = 20;
+    int rowDrone = 20;
+
+    colObst = randomSelect(WIDTH - (2*BMARGIN));
+    rowObst = randomSelect(HEIGHT - (2*BMARGIN));
+    colTarget = randomSelect(WIDTH - (2*BMARGIN));
+    rowTarget = randomSelect(HEIGHT - (2*BMARGIN));
+    val = randomSelect(10);
     //Drone_bb drone;
     //Force force_o, force_t;
     char drone_str[80];
     char forceO_str[80];
     char forceT_str[80];
-
+  
     while (1) {
-        // receiving drone position and sending to obstacle.c and target.c
-        // fprintf(file, "Reading drone position. Before %d, %d\n",  drone.x, drone.y);
-        // fflush(file);
         
-        if (read(fds[DRONE][askrd], &drone_str, sizeof(drone_str)) == -1){
-            fprintf(file,"[BB] Error reading drone position\n");
-            fflush(file);
-            exit(EXIT_FAILURE);
-        }
+        reset += PERIODBB/1000000;
+        setPermissions();
+
+        // Update the main window
+        werase(win);
+        box(win, 0, 0);
+        drawDrone(win, rowDrone + HMARGIN + BMARGIN,colDrone + WMARGIN + BMARGIN);
+        drawObstacle(win, rowObst + HMARGIN + BMARGIN,colObst + WMARGIN + BMARGIN);
+        drawTarget(win, rowTarget + HMARGIN + BMARGIN,colTarget + WMARGIN + BMARGIN, val + 1);
+        wrefresh(win);
+        
+        //FDs setting for select
+        FD_ZERO(&readfds);
+        FD_SET(fds[DRONE][askrd], &readfds);
+        FD_SET(fds[INPUT][askrd], &readfds);
+        FD_SET(fds[OBSTACLE][askrd], &readfds);
+        FD_SET(fds[TARGET][askrd], &readfds); 
 
         fprintf(file, "Sending drone position to [OB]\n");
         fflush(file);
@@ -148,15 +292,12 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
 
-        fprintf(file, "Sending drone position to [TA]\n");
-        fflush(file);
-        if (write(fds[TARGET][recwr], &drone_str, sizeof(drone_str)) == -1) {
-            fprintf(file,"[BB] Error sending drone position to [TARGET]\n");
-            fflush(file);
-            exit(EXIT_FAILURE);
-        }
-
-        usleep(100);
+        int sel = select(nfds, &readfds, NULL, NULL, &tv);
+        
+        if (sel == -1) {
+            perror("Select error");
+            break;
+        } 
 
         // receiving force from obstacle.c and target.c and sending to drone
         fprintf(file, "Reading force_o \n");
@@ -189,66 +330,71 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
 
+        if(ready > 0){
+            unsigned int rand = randomSelect(ready);
+            int selected = fdsQueue[rand];
 
-        //sleep(1);
-            
-        //FDs setting for select
+            if (selected == fds[DRONE][askrd]){
+                fprintf(file, "selected drone\n");
+                fflush(file);   
+                //manda ack di lettura dato al drone
+                
+            } else if (selected == fds[INPUT][askrd]){
+                fprintf(file, "selected input\n");
+                fflush(file);
+                char inp [12]; 
+                read(fds[INPUT][askrd], inp, 12);
+                char* extractedMsg = strchr(inp, ';'); // Trova il primo ';'
+                if (extractedMsg != NULL) {
+                    extractedMsg++; // Salta il ';'
+                } else {
+                    extractedMsg = inp; // Se ';' non trovato, usa l'intero messaggio
+                }
 
-        // FD_ZERO(&readfds);
-        // FD_SET(fds[DRONE][askrd], &readfds);
-        // FD_SET(fds[INPUT][askrd], &readfds);
-        // FD_SET(fds[OBSTACLE][askrd], &readfds);
-        // FD_SET(fds[TARGET][askrd], &readfds); 
+                if (strcmp(extractedMsg, moves[0]) == 0) {
+                    rowDrone--;
+                    colDrone--;
+                } else if (strcmp(extractedMsg, moves[1]) == 0) {
+                    rowDrone--;
+                } else if (strcmp(extractedMsg, moves[2]) == 0) {
+                    rowDrone--;
+                    colDrone++;
+                } else if (strcmp(extractedMsg, moves[3]) == 0) {
+                    colDrone--;
+                } else if (strcmp(extractedMsg, moves[4]) == 0) {
+                    ;
+                } else if (strcmp(extractedMsg, moves[5]) == 0) {
+                    colDrone++;
+                } else if (strcmp(extractedMsg, moves[6]) == 0) {
+                    rowDrone++;
+                    colDrone--;
+                } else if (strcmp(extractedMsg, moves[7]) == 0) {
+                    rowDrone++;
+                } else if (strcmp(extractedMsg, moves[8]) == 0) {
+                    rowDrone++;
+                    colDrone++;
+                } else {
+                    printf("Unknown command: %s\n", extractedMsg);
+                }
 
-        // int fdsQueue [4];
-        // int ready = 0;
-
-        // int sel = select(nfds, &readfds, NULL, NULL, &tv);
-
-        // if (sel == -1) {
-        //     perror("Select error");
-        //     break;
-        // } 
-
-        // if (FD_ISSET(fds[DRONE][askrd], &readfds)) {
-        //     fdsQueue[ready] = fds[DRONE][askrd];
-        //     ready++;
-        // }
-        // if (FD_ISSET(fds[INPUT][askrd], &readfds)) {
-        //     fdsQueue[ready] = fds[INPUT][askrd];
-        //     ready++;
-        // }
-        // if (FD_ISSET(fds[OBSTACLE][askrd], &readfds)) {
-        //     fdsQueue[ready] = fds[OBSTACLE][askrd];
-        //     ready++;
-        // }
-        // if (FD_ISSET(fds[TARGET][askrd], &readfds)) {
-        //     fdsQueue[ready] = fds[TARGET][askrd];
-        //     ready++;
-        // }
-        
-
-        // if(ready > 0){
-        //     unsigned int rand = randomSelect(ready);
-        //     int selected = fdsQueue[rand];
-
-        //     if (selected == fds[DRONE][askrd]){
-        //         fprintf(file, "selected drone\n");
-        //         fflush(file);   
-        //     } else if (selected == fds[INPUT][askrd]){
-        //         fprintf(file, "selected input\n");
-        //         fflush(file);             
-        //     } else if (selected == fds[OBSTACLE][askrd]){
-        //         fprintf(file, "selected obstacle\n");
-        //         fflush(file);
-        //     }else if (selected == fds[TARGET][askrd]){
-        //         fprintf(file, "selected target\n");
-        //         fflush(file);
-        //     }else{
-        //         fprintf(file, "Problems\n");
-        //         fflush(file);
-        //     }
-        // }
+                write(fds[INPUT][recwr],ack,strlen(ack) + 1);
+                //legge nuovo input
+                //lo manada direttamente al drone
+                //aspetta la nuova drone position             
+            } else if (selected == fds[OBSTACLE][askrd] || selected == fds[TARGET][askrd]){
+                fprintf(file, "selected obstacle or drone\n");
+                fflush(file);
+                //if pObst == 1 || pTarget == 1
+                    //send drone position to target
+                    //read the target
+                    //send drone position and target to obstacle
+                    //read obstacle
+            }else{
+                fprintf(file, "Problems\n");
+                fflush(file);
+            }
+        }
+        usleep(PERIODBB);
     }
 
     return 0;
