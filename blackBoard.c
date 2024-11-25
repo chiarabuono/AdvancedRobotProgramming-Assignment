@@ -358,7 +358,7 @@ int main(int argc, char *argv[]) {
         //FDs setting for select
         FD_ZERO(&readfds);
         FD_SET(fds[DRONE][askrd], &readfds);
-        //FD_SET(fds[INPUT][askrd], &readfds);
+        FD_SET(fds[INPUT][askrd], &readfds);
         //FD_SET(fds[OBSTACLE][askrd], &readfds);
         //FD_SET(fds[TARGET][askrd], &readfds); 
 
@@ -425,41 +425,76 @@ int main(int argc, char *argv[]) {
                 fprintf(file, "selected input\n");
                 fflush(file);
                 char inp [12]; 
-                read(fds[INPUT][askrd], inp, 12);
-                char* extractedMsg = strchr(inp, ';'); // Trova il primo ';'
-                if (extractedMsg != NULL) {
-                    extractedMsg++; // Salta il ';'
-                } else {
-                    extractedMsg = inp; // Se ';' non trovato, usa l'intero messaggio
+                
+                if (read(fds[INPUT][askrd], inp, 12) == -1){
+                    fprintf(file, "Error reading input\n");
+                    fflush(file);
+                    exit(EXIT_FAILURE);
+                }
+                
+                fprintf(file, "Received: %s\n", inp);
+                fflush(file);
+
+                char rec[2];
+                if(read(fds[DRONE][askrd], &rec, 2) == -1){
+                    fprintf(file, "Error reading input\n");
+                    fflush(file);
+                    exit(EXIT_FAILURE);
+                }
+                if(rec[0] == 'R'){
+                    if (write(fds[DRONE][recwr], inp, 12) == -1) {
+                        fprintf(file, "[BB] Error asking drone position\n");
+                        fflush(file);
+                        exit(EXIT_FAILURE);
+                    }    
                 }
 
-                if (strcmp(extractedMsg, moves[0]) == 0) {
-                    drone.y--;
-                    drone.x--;
-                } else if (strcmp(extractedMsg, moves[1]) == 0) {
-                    drone.y--;
-                } else if (strcmp(extractedMsg, moves[2]) == 0) {
-                    drone.y--;
-                    drone.x++;
-                } else if (strcmp(extractedMsg, moves[3]) == 0) {
-                    drone.x--;
-                } else if (strcmp(extractedMsg, moves[4]) == 0) {
-                    ;
-                } else if (strcmp(extractedMsg, moves[5]) == 0) {
-                    drone.x++;
-                } else if (strcmp(extractedMsg, moves[6]) == 0) {
-                    drone.y++;
-                    drone.x--;
-                } else if (strcmp(extractedMsg, moves[7]) == 0) {
-                    drone.y++;
-                } else if (strcmp(extractedMsg, moves[8]) == 0) {
-                    drone.y++;
-                    drone.x++;
-                } else {
-                    printf("Unknown command: %s\n", extractedMsg);
+                fprintf(file, "drone ready\n"); 
+                fflush(file);
+
+                if (write(fds[INPUT][recwr], ack, strlen(ack) + 1) == -1){
+                    fprintf(file, "Error sending ack\n");
+                    fflush(file);
+                    exit(EXIT_FAILURE);
                 }
 
-                write(fds[INPUT][recwr],ack,strlen(ack) + 1);
+                fprintf(file, "Sended ack and reading drone position\n");
+                fflush(file);
+
+                if (read(fds[DRONE][askrd], &drone_str, strlen(drone_str)) == -1){
+                    fprintf(file,"[BB] Error reading drone position\n");
+                    fflush(file);
+                    exit(EXIT_FAILURE);
+                }
+                fprintf(file, "Drone position: %s\n", drone_str);
+                fflush(file);
+                fromStringtoDrone(&drone, drone_str, file);
+                // if (strcmp(extractedMsg, moves[0]) == 0) {
+                //     drone.y--;
+                //     drone.x--;
+                // } else if (strcmp(extractedMsg, moves[1]) == 0) {
+                //     drone.y--;
+                // } else if (strcmp(extractedMsg, moves[2]) == 0) {
+                //     drone.y--;
+                //     drone.x++;
+                // } else if (strcmp(extractedMsg, moves[3]) == 0) {
+                //     drone.x--;
+                // } else if (strcmp(extractedMsg, moves[4]) == 0) {
+                //     ;
+                // } else if (strcmp(extractedMsg, moves[5]) == 0) {
+                //     drone.x++;
+                // } else if (strcmp(extractedMsg, moves[6]) == 0) {
+                //     drone.y++;
+                //     drone.x--;
+                // } else if (strcmp(extractedMsg, moves[7]) == 0) {
+                //     drone.y++;
+                // } else if (strcmp(extractedMsg, moves[8]) == 0) {
+                //     drone.y++;
+                //     drone.x++;
+                // } else {
+                //     printf("Unknown command: %s\n", extractedMsg);
+                // }
+
                 //legge nuovo input
                 //lo manada direttamente al drone
                 //aspetta la nuova drone position             

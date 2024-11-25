@@ -35,16 +35,17 @@ typedef struct
 
 } Drone;
 
+void setPosition(){
+    ;
+}
 // Useful for debugging
-void printPosition(Drone p)
-{
+void printPosition(Drone p) {
     printf("Position: (x = %f, y = %f)\n", p.x, p.y);
     printf("BB Pos: (x = %.0f, y = %.0f)\n", round(p.x), round(p.y));
 }
 
 // Simulate user input
-void fillDirections(const char *filled[], int *size)
-{
+void fillDirections(const char *filled[], int *size) {
     for (int i = 0; i < *size; i++)
     {
         int randomIndex = 7;
@@ -53,7 +54,10 @@ void fillDirections(const char *filled[], int *size)
 }
 
 // Update drone position
-Drone updatePosition(Drone *p, const char *direction, Force force) {
+Drone updatePosition(Drone *p, char *direction, Force force) {
+
+    printf("Direction: %s, Force: %f, %f, Drone: %f, %f\n", direction, force.x, force.y, p->x, p->y);
+    fflush(stdout);
 
     Drone updated_drone = {
         p->x, p->y,
@@ -117,14 +121,12 @@ void removeFirstElement(const char *directions[], int *size, Drone drone)
     }
 }
 
-Drone_bb DroneToDrone_bb(Drone *drone)
-{
+Drone_bb DroneToDrone_bb(Drone *drone) {
     Drone_bb bb = {(int)round(drone->x), (int)round(drone->y)};
     return bb;
 }
 
-Force drone_force(Drone *p, float mass, float K)
-{
+Force drone_force(Drone *p, float mass, float K) {
 
     Force force;
 
@@ -139,8 +141,7 @@ Force drone_force(Drone *p, float mass, float K)
     return force;
 }
 
-Force obstacle_force(Drone *drone, Obstacles obstacles)
-{
+Force obstacle_force(Drone *drone, Obstacles obstacles) {
     Force force = {0, 0};
     float deltaX, deltaY, distance, distance2;
 
@@ -163,8 +164,7 @@ Force obstacle_force(Drone *drone, Obstacles obstacles)
     return force;
 }
 
-Force target_force(Drone *drone, Targets targets)
-{
+Force target_force(Drone *drone, Targets targets) {
     Force force = {0, 0};
     float deltaX, deltaY, distance, distance2;
 
@@ -187,8 +187,7 @@ Force target_force(Drone *drone, Targets targets)
     return force;
 }
 
-Force total_force(Force drone, Force obstacle, Force target)
-{
+Force total_force(Force drone, Force obstacle, Force target){
     Force total;
     total.x = drone.x + obstacle.x + target.x;
     total.y = drone.y + obstacle.y + target.y;
@@ -196,26 +195,22 @@ Force total_force(Force drone, Force obstacle, Force target)
     return total;
 }
 
-void sig_handler(int signo)
-{
+void sig_handler(int signo) {
     if (signo == SIGUSR1)
     {
         handler(DRONE, 100);
     }
 }
 
-int main(int argc, char *argv[])
-{
-    if (argc < 2)
-    {
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
         fprintf(stderr, "Uso: %s <fd_str>\n", argv[0]);
         exit(1);
     }
 
     // Opening log file
     FILE *file = fopen("outputdrone.txt", "a");
-    if (file == NULL)
-    {
+    if (file == NULL) {
         perror("Errore nell'apertura del file");
         exit(1);
     }
@@ -229,8 +224,7 @@ int main(int argc, char *argv[])
     token = strtok(NULL, ",");
 
     // FDs extraction
-    while (token != NULL && index < 4)
-    {
+    while (token != NULL && index < 4) {
         fds[index] = atoi(token);
         index++;
         token = strtok(NULL, ",");
@@ -240,8 +234,7 @@ int main(int argc, char *argv[])
     char dataWrite[80];
     snprintf(dataWrite, sizeof(dataWrite), "d%d,", pid);
 
-    if (writeSecure("log.txt", dataWrite, 1, 'a') == -1)
-    {
+    if (writeSecure("log.txt", dataWrite, 1, 'a') == -1) {
         perror("Error in writing in log.txt");
         exit(1);
     }
@@ -253,11 +246,9 @@ int main(int argc, char *argv[])
     signal(SIGUSR1, sig_handler);
 
     // Simulate user input
-    const char *directions[MAX_DIRECTIONS];
-    int directionCount = MAX_DIRECTIONS;
-    fillDirections(directions, &directionCount);
+    char directions[MAX_DIRECTIONS];
 
-    Drone drone = {10.0, 20.0, {10.0, 20.0}, {10.0, 20.0}};
+    Drone drone = {10.0, 20.0, {11.0, 21.0}, {12.0, 22.0}};
     Drone_bb drone_bb;
     Force force_d = {0, 0};
     Force force_o = {0, 0};
@@ -320,7 +311,7 @@ int main(int argc, char *argv[])
 
             fprintf(file, "[M] Updating drone position\n");
             fflush(file);
-            drone = updatePosition(&drone, directions[0], force);
+            drone = updatePosition(&drone, directions, force);
             drone_bb = DroneToDrone_bb(&drone);
             
 
@@ -335,7 +326,42 @@ int main(int argc, char *argv[])
             }
             break;
         case 'I':
-            removeFirstElement(directions, &directionCount, drone);
+            // removeFirstElement(directions, &directionCount, drone);
+            fprintf(file, "[I] Received directions: %s\n", data);
+            fflush(file);
+            
+            char* extractedMsg = strchr(data, ';'); // Trova il primo ';'
+                if (extractedMsg != NULL) {
+                    extractedMsg++; // Salta il ';'
+                } else {
+                    extractedMsg = data; // Se ';' non trovato, usa l'intero messaggio
+                }
+            strcpy(directions, extractedMsg);
+
+            // 'A' case
+            
+            force_t = target_force(&drone, targets);
+            force_o = obstacle_force(&drone, obstacles);
+            force_d = drone_force(&drone, DRONEMASS, K);
+            force = total_force(force_d, force_o, force_t);
+
+            fprintf(file, "[I] Updating drone position %s\n", directions);
+            fflush(file);
+
+            drone = updatePosition(&drone, directions, force);
+            drone_bb = DroneToDrone_bb(&drone);
+            
+
+            snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
+            fprintf(file, "[I] Drone position (%d;%d) -> Sending drone position: %s\n",drone_bb.x, drone_bb.y, drone_str);
+            fflush(file);
+
+            // drone sends its position to BB
+            if (write(fds[askwr], drone_str, strlen(drone_str)) == -1) {
+                perror("[I] Error sending drone position");
+                exit(EXIT_FAILURE);
+            }
+
             break;
         case 'A':
             force_t = target_force(&drone, targets);
@@ -345,7 +371,7 @@ int main(int argc, char *argv[])
 
             fprintf(file, "[A] Updating drone position\n");
             fflush(file);
-            drone = updatePosition(&drone, directions[0], force);
+            drone = updatePosition(&drone, directions, force);
             drone_bb = DroneToDrone_bb(&drone);
             
             snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);

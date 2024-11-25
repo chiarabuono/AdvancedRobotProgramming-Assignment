@@ -194,6 +194,7 @@ int main(int argc, char *argv[]) {
         
         msg[0] = 'I';
         msg[1] = ';';
+
         //Refresh the auxiliary window
         werase(win);
         box(win, 0, 0);       
@@ -234,17 +235,23 @@ int main(int argc, char *argv[]) {
             btn = 99;   //Any of the direction buttons pressed
         } 
 
+        werase(win);
+        box(win, 0, 0);       
+        wrefresh(win);
         drawBtn(btn, DEFAULT);
+        usleep(100000);
+        werase(win);
+        box(win, 0, 0);       
+        wrefresh(win);
+        drawBtn(99, DEFAULT); //to make all the buttons white
+
         fprintf(file,"msg: %s\n", msg);
         fflush(file);
         // Send the message to the blackboard
         char rec[2];
         write(fds[askwr],msg,strlen(msg) + 1);
         read(fds[recrd], &rec, 2);
-        if(strcmp(rec,"A") == 0){
-           ;
-        }
-
+        
         usleep(100000);
     }
     
