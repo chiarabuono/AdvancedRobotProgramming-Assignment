@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
             perror("[TA] Error sending obstacle positions to [BB]");
             exit(EXIT_FAILURE);
         }
-
+        usleep(100000);
         // obstaclesMoving(obstacles);
     }
 

@@ -19,7 +19,7 @@
 #define recrd 2
 
 #define MAX_DIRECTIONS 80
-#define PERIOD 50 //[Hz]
+#define PERIOD 10 //50 //[Hz]
 #define DRONEMASS 1
 
 float K = 1.0;
@@ -258,10 +258,10 @@ int main(int argc, char *argv[]) {
     Obstacles obstacles;
 
     char data[200];
-    char drone_str[80];
+    char drone_str[6];
     int bytesRead;
 
-    drone_bb = DroneToDrone_bb(&drone);  
+    drone_bb = DroneToDrone_bb(&drone);
     snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
 
     if (write(fds[askwr], drone_str, strlen(drone_str)) == -1) {
