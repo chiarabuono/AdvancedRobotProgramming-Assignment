@@ -39,8 +39,8 @@ Targets createTargets(Drone_bb drone) {
     for (int i = 0; i < NUM_TARGET; i++) {
 
         do {
-            x_pos = rand() % WINDOW_LENGTH;
-            y_pos = rand() % WINDOW_WIDTH;
+            x_pos = rand() % (WINDOW_LENGTH-4);
+            y_pos = rand() % (WINDOW_WIDTH-4);
 
         } while (
             (x_pos >= drone.x - NO_SPAWN_DIST && x_pos <= drone.x + NO_SPAWN_DIST) &&

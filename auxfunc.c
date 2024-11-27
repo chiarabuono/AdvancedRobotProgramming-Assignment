@@ -179,12 +179,33 @@ int readSecure(char* filename, char* data, int numeroRiga) {
 }
 
 
+// void fromStringtoDrone(Drone_bb *drone, const char *drone_str, FILE *file) {
+//     if (sscanf(drone_str, "%d;%d", &drone->x, &drone->y) != 2) {
+//         fprintf(file, "Error parsing drone position: %s\n", drone_str);
+//         fflush(file);
+//         exit(EXIT_FAILURE);
+//     }
+// }
+
 void fromStringtoDrone(Drone_bb *drone, const char *drone_str, FILE *file) {
-    if (sscanf(drone_str, "%d;%d", &drone->x, &drone->y) != 2) {
+    // Buffer temporaneo per contenere numeri di massimo 2 cifre più terminatore '\0'
+    char x_str[3] = {0}; // 2 caratteri + '\0'
+    char y_str[3] = {0};
+
+    // Estrae al massimo 2 caratteri per x e y
+    if (sscanf(drone_str, "%2[^;];%2s", x_str, y_str) != 2) {
         fprintf(file, "Error parsing drone position: %s\n", drone_str);
         fflush(file);
         exit(EXIT_FAILURE);
     }
+
+    // Converte i valori in interi
+    drone->x = atoi(x_str);
+    drone->y = atoi(y_str);
+
+    // // Log per verifica
+    // fprintf(file, "Parsed values: x = %d, y = %d\n", drone->x, drone->y);
+    // fflush(file);
 }
 
 void fromStringtoForce(Force *force, const char *force_str, FILE *file) {
@@ -305,6 +326,48 @@ void fromStringtoPositionsWithTwoTargets(int *x1, int *y1, int *x2, int *y2, con
     free(str_copy);  // Free the dynamically allocated memory
 
 }
+
+// void parseArray(int *array, const char *data, int max_size) {
+//     char *token;
+//     char *str_copy = strdup(data);  // Copia modificabile della stringa
+//     char *saveptr;
+//     int i = 0;
+
+//     token = strtok_r(str_copy, ",", &saveptr);
+//     while (token != NULL && i < max_size) {
+//         array[i++] = atoi(token);
+//         token = strtok_r(NULL, ",", &saveptr);
+//     }
+
+//     free(str_copy);  // Libera la memoria dinamica
+// }
+
+// void fromStringtoPositionsWithTwoTargets(
+//     int *x1, int *y1, int max_size_1,
+//     int *x2, int *y2, int max_size_2,
+//     const char *str
+// ) {
+//     char *str_copy = strdup(str);  // Copia modificabile della stringa
+//     char *saveptr;
+
+//     // Dividi la stringa in sezioni separate da `;`
+//     char *sections[4] = {NULL, NULL, NULL, NULL};
+//     int section_count = 0;
+
+//     char *token = strtok_r(str_copy, ";", &saveptr);
+//     while (token != NULL && section_count < 4) {
+//         sections[section_count++] = token;
+//         token = strtok_r(NULL, ";", &saveptr);
+//     }
+
+//     // Esegui il parsing per ogni sezione con i rispettivi limiti
+//     if (sections[0]) parseArray(x1, sections[0], max_size_1);
+//     if (sections[1]) parseArray(y1, sections[1], max_size_1);
+//     if (sections[2]) parseArray(x2, sections[2], max_size_2);
+//     if (sections[3]) parseArray(y2, sections[3], max_size_2);
+
+//     free(str_copy);  // Libera la memoria dinamica
+// }
 
 // in BB: send drone position and target positions to OB
 void fromPositiontoString(int *x, int *y, int len, char *str, size_t str_size, FILE *file) {

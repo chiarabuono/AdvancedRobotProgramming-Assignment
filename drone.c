@@ -40,8 +40,8 @@ void setPosition(){
 }
 // Useful for debugging
 void printPosition(Drone p) {
-    printf("Position: (x = %f, y = %f)\n", p.x, p.y);
-    printf("BB Pos: (x = %.0f, y = %.0f)\n", round(p.x), round(p.y));
+    // printf("Position: (x = %f, y = %f)\n", p.x, p.y);
+    // printf("BB Pos: (x = %.0f, y = %.0f)\n", round(p.x), round(p.y));
 }
 
 // Simulate user input
@@ -56,8 +56,8 @@ void fillDirections(const char *filled[], int *size) {
 // Update drone position
 Drone updatePosition(Drone *p, char *direction, Force force) {
 
-    printf("Direction: %s, Force: %f, %f, Drone: %f, %f\n", direction, force.x, force.y, p->x, p->y);
-    fflush(stdout);
+    // printf("Direction: %s, Force: %f, %f, Drone: %f, %f\n", direction, force.x, force.y, p->x, p->y);
+    // fflush(stdout);
 
     Drone updated_drone = {
         p->x, p->y,
@@ -264,7 +264,7 @@ int main(int argc, char *argv[]) {
     drone_bb = DroneToDrone_bb(&drone);
     snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
 
-    if (write(fds[askwr], drone_str, strlen(drone_str)) == -1) {
+    if (write(fds[askwr], drone_str, sizeof(drone_str)) == -1) {
         perror("[DRONE] Error sending drone position");
         exit(EXIT_FAILURE);
     }
@@ -297,6 +297,8 @@ int main(int argc, char *argv[]) {
         switch (data[0]) {
         
         case 'M':
+            memmove(data, data + 1, strlen(data));
+            fprintf(file, "[M] Received new map: %s\n", data);
             fromStringtoPositionsWithTwoTargets(targets.x, targets.y, obstacles.x, obstacles.y, data, file);
             fprintf(file, "[M] Read new map\n");
             fflush(file);
@@ -316,7 +318,7 @@ int main(int argc, char *argv[]) {
             
 
             snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
-            fprintf(file, "[M] Drone position (%d;%d) -> Sending drone position: %s\n",drone_bb.x, drone_bb.y, drone_str);
+            fprintf(file, "[M] Drone position %s\n",drone_str);
             fflush(file);
 
             // drone sends its position to BB
@@ -377,6 +379,10 @@ int main(int argc, char *argv[]) {
             snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
             fprintf(file, "[A] Sending drone position: %s\n", drone_str);
             fflush(file);
+
+            fprintf(file, "strlen: %ld\n", strlen(drone_str));
+            fflush(file);
+
             // drone sends its position to BB
             if (write(fds[askwr], drone_str, strlen(drone_str)) == -1) {
                 perror("[DRONE] Error sending drone position");

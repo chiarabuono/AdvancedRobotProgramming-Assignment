@@ -55,7 +55,10 @@ void handler(int id, int sleep);
 void fromStringtoDrone(Drone_bb *drone, const char *drone_str, FILE *file);
 void fromStringtoForce(Force *force, const char *force_str, FILE *file);
 void fromStringtoPositions(Drone_bb *drone, int *x, int *y, const char *str, FILE *file);
+
 void fromStringtoPositionsWithTwoTargets(int *x1, int *y1, int *x2, int *y2, const char *str, FILE *file);
+
+
 void fromPositiontoString(int *x, int *y, int len, char *str, size_t str_size, FILE *file);
 void concatenateStr(const char *str1, const char *str2, char *output, size_t output_size, FILE *file);
 
