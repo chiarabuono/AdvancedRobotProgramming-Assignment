@@ -189,8 +189,8 @@ void mapInit(FILE *file){
 }
 
 void drawDrone(WINDOW * win){
-    int row = drone.y + HMARGIN + BMARGIN;
-    int col = drone.x + WMARGIN + BMARGIN;
+    int row = drone.x /*+ HMARGIN + BMARGIN*/;
+    int col = drone.y /*+ WMARGIN + BMARGIN*/;
     wattron(win, A_BOLD); // Attiva il grassetto
     wattron(win, COLOR_PAIR(1));   
     mvwprintw(win, row - 1, col, "|");     
@@ -206,7 +206,7 @@ void drawObstacle(WINDOW * win){
     wattron(win, A_BOLD); // Attiva il grassetto
     wattron(win, COLOR_PAIR(2)); 
     for(int i = 0; i < NUM_OBSTACLES; i++){
-        mvwprintw(win, obstacles.x[i] + WMARGIN + BMARGIN , obstacles.y[i] + HMARGIN + BMARGIN, "0");
+        mvwprintw(win, obstacles.x[i] /*+ WMARGIN + BMARGIN*/ , obstacles.y[i] /*+ HMARGIN + BMARGIN*/, "0");
     }
     wattroff(win, COLOR_PAIR(2)); 
     wattroff(win, A_BOLD); // Attiva il grassetto 
@@ -218,7 +218,7 @@ void drawTarget(WINDOW * win) {
     for(int i = 0; i < NUM_TARGET; i++){
         char val_str[2];
         sprintf(val_str, "%d", i/*targets.value[i]*/); // Converte il valore in stringa
-        mvwprintw(win, targets.x[i] + HMARGIN + BMARGIN, targets.y[i] + WMARGIN + BMARGIN, "%s", val_str); // Usa un formato esplicito
+        mvwprintw(win, targets.x[i] /*+ HMARGIN + BMARGIN*/, targets.y[i] /*+ WMARGIN + BMARGIN*/, "%s", val_str); // Usa un formato esplicito
     } 
     wattroff(win, COLOR_PAIR(3)); 
     wattroff(win, A_BOLD); // Disattiva il grassetto
@@ -336,12 +336,21 @@ int main(int argc, char *argv[]) {
     mapInit(file);
     sleep(1);
 
+    // for(int i = 0; i < NUM_OBSTACLES; i++){
+    //     obstacles.x[i] = 29 - i;
+    //     obstacles.y[i]= 79 - i;
+    // }
+    // for(int i = 0; i < NUM_TARGET; i++){
+    //     targets.x[i] = i;
+    //     targets.y[i] = i;
+    // }
     while (1) {
 
         // Update the main window
         werase(win);
         box(win, 0, 0);
         drawDrone(win);
+        
         drawObstacle(win);
         drawTarget(win);
         wrefresh(win);

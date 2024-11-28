@@ -32,21 +32,32 @@ void sig_handler(int signo) {
     }
 }
 
+int canSpawnPrev(int x_pos, int y_pos, Targets targets) {
+    for (int i = 0; i < NUM_TARGET; i++) {
+        if (abs(x_pos - targets.x[i]) <= NO_SPAWN_DIST && abs(y_pos - targets.y[i]) <= NO_SPAWN_DIST) return 0;
+    }
+    return 1;
+}
+
 Targets createTargets(Drone_bb drone) {
     Targets targets;
     int x_pos, y_pos;
 
-    for (int i = 0; i < NUM_TARGET; i++) {
+    for( int i = 0; i < NUM_TARGET; i++){
+        targets.x[i] = 0;
+        targets.y[i] = 0;
+    }
 
-        do {
-            x_pos = rand() % (WINDOW_LENGTH-4);
-            y_pos = rand() % (WINDOW_WIDTH-4);
-
+    for (int i = 0; i < NUM_TARGET; i++)
+    {
+        do{
+            x_pos = rand() % (WINDOW_LENGTH-1);
+            y_pos = rand() % (WINDOW_WIDTH-1);
         } while (
-            (x_pos >= drone.x - NO_SPAWN_DIST && x_pos <= drone.x + NO_SPAWN_DIST) &&
-            (y_pos >= drone.y - NO_SPAWN_DIST && y_pos <= drone.y + NO_SPAWN_DIST)
-        );
-        targets.value[i] = rand() % MAX_TARGET_VALUE;
+            (abs(x_pos - drone.x )<= NO_SPAWN_DIST) &&
+            (abs(y_pos - drone.y) <= NO_SPAWN_DIST) || 
+            canSpawnPrev(x_pos, y_pos, targets) == 0);
+
         targets.x[i] = x_pos;
         targets.y[i] = y_pos;
     }
@@ -137,6 +148,11 @@ int main(int argc, char *argv[]) {
     char drone_str[80];
     char str[len_str_targets];
     
+    for( int i = 0; i < NUM_TARGET; i++){
+        targets.x[i] = 0;
+        targets.y[i] = 0;
+    }
+
     if (read(fds[recrd], &drone_str, sizeof(drone_str)) == -1){
         perror("[TA] Error reading drone position from [BB]");
         exit(EXIT_FAILURE);

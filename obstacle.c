@@ -31,31 +31,44 @@ void sig_handler(int signo) {
 
 int canSpawn(int x_pos, int y_pos, Targets targets) {
     for (int i = 0; i < NUM_TARGET; i++) {
-        if (x_pos - targets.x[i] <= NO_SPAWN_DIST && y_pos - targets.y[i] <= NO_SPAWN_DIST) return 0; 
+        if (abs(x_pos - targets.x[i]) <= NO_SPAWN_DIST && abs(y_pos - targets.y[i]) <= NO_SPAWN_DIST) return 0; 
+    }
+    return 1;
+}
+
+int canSpawnPrev(int x_pos, int y_pos, Obstacles obstacles) {
+    for (int i = 0; i < NUM_OBSTACLES; i++) {
+        if (abs(x_pos - obstacles.x[i]) <= NO_SPAWN_DIST && abs(y_pos - obstacles.y[i]) <= NO_SPAWN_DIST) return 0;
     }
     return 1;
 }
 
 Obstacles createObstacles(Drone_bb drone, Targets targets) {
     Obstacles obstacles;
-    float x_pos, y_pos;
+    int x_pos, y_pos;
 
+    for( int i = 0; i < NUM_OBSTACLES; i++){
+        obstacles.x[i] = 0;
+        obstacles.y[i] = 0;
+    }
+    
     for (int i = 0; i < NUM_OBSTACLES; i++)
     {
-        do
-        {
-            x_pos = rand() % (WINDOW_LENGTH-4);
-            y_pos = rand() % (WINDOW_WIDTH-4);
+        do{
+            x_pos = rand() % (WINDOW_LENGTH-1);
+            y_pos = rand() % (WINDOW_WIDTH-1);
         } while (
-            (x_pos >= drone.x - NO_SPAWN_DIST && x_pos <= drone.x + NO_SPAWN_DIST) &&
-            (y_pos >= drone.y - NO_SPAWN_DIST && y_pos <= drone.y + NO_SPAWN_DIST) && 
-            canSpawn(x_pos, y_pos, targets) == 1);
+            (abs(x_pos - drone.x )<= NO_SPAWN_DIST) &&
+            (abs(y_pos - drone.y) <= NO_SPAWN_DIST) || 
+            canSpawn(x_pos, y_pos, targets) == 0||
+            canSpawnPrev(x_pos, y_pos, obstacles) == 0);
 
         obstacles.x[i] = x_pos;
         obstacles.y[i] = y_pos;
     }
     return obstacles;
 }
+
 // Simulate obstacle moving
 
 void obstaclesMoving(Obstacles obstacles)
@@ -155,6 +168,10 @@ int main(int argc, char *argv[])
     char obstacle_str[len_str_obstacles];
     char dronetarget_str[10 + len_str_targets];
 
+    for( int i = 0; i < NUM_OBSTACLES; i++){
+        obstacles.x[i] = 0;
+        obstacles.y[i] = 0;
+    }
 
     while (1) {
 
