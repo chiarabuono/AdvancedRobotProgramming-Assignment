@@ -9,8 +9,8 @@
 #define TARGET 3 
 #define BLACKBOARD 4
 
-#define WINDOW_WIDTH 80
-#define WINDOW_LENGTH 30
+#define WINDOW_WIDTH 100
+#define WINDOW_LENGTH 100
 
 #define NUM_TARGET 5
 #define NUM_OBSTACLES 10

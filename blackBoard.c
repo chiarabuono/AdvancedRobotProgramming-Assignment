@@ -22,33 +22,23 @@
 
 #define nfds 19
 
-#define HEIGHT 30
-#define WIDTH 80
-
 #define HMARGIN 5
 #define WMARGIN 5
 #define BMARGIN 2
+#define SCALERATIO 1
 
 #define PERIODBB 10000  // [us]
 
-// dronex;droney;target[x1],...,target[xn];target[y1],...,target[yn];
+int nh, nw;
+float scaleh = 1.0, scalew = 1.0;
 
 int pid;
-
-int pTarget = 0;
-int pObst = 0;
-int pDrone = 1;
-int pInput = 1;
-
-int colObst;
-int rowObst;
-int colTarget;
-int rowTarget;
-int val;
 
 char ack [2] = "A\0";
 
 int fds[4][4] = {0};
+
+WINDOW * win;
 
 Drone_bb drone;
 Targets targets;
@@ -67,15 +57,17 @@ char send_dronetarget_str[len_str_targets + 10];
 char temp[len_str_targets + 2];
 char send_targetobs_str[len_str_obstacles + len_str_targets + 2];
 
-// void resizeHandler(int sig){
-//     getmaxyx(stdscr, nh, nw);  /* get the new screen size */
-//     endwin();
-//     initscr();
-//     start_color();
-//     curs_set(0);
-//     noecho();
-//     win = newwin(nh-3, nw-3, 0, 0); 
-//     }
+void resizeHandler(int sig){
+    getmaxyx(stdscr, nh, nw);  /* get the new screen size */
+    scaleh = ((float)nh / (float)WINDOW_LENGTH)*SCALERATIO;
+    scalew = (float)nw / (float)WINDOW_WIDTH;
+    endwin();
+    initscr();
+    start_color();
+    curs_set(0);
+    noecho();
+    win = newwin(nh, nw, 0, 0); 
+    }
 
 void mapInit(FILE *file){
 
@@ -189,8 +181,8 @@ void mapInit(FILE *file){
 }
 
 void drawDrone(WINDOW * win){
-    int row = drone.x /*+ HMARGIN + BMARGIN*/;
-    int col = drone.y /*+ WMARGIN + BMARGIN*/;
+    int row = (int)(drone.x * scaleh);
+    int col = (int)(drone.y * scalew);
     wattron(win, A_BOLD); // Attiva il grassetto
     wattron(win, COLOR_PAIR(1));   
     mvwprintw(win, row - 1, col, "|");     
@@ -206,7 +198,7 @@ void drawObstacle(WINDOW * win){
     wattron(win, A_BOLD); // Attiva il grassetto
     wattron(win, COLOR_PAIR(2)); 
     for(int i = 0; i < NUM_OBSTACLES; i++){
-        mvwprintw(win, obstacles.x[i] /*+ WMARGIN + BMARGIN*/ , obstacles.y[i] /*+ HMARGIN + BMARGIN*/, "0");
+        mvwprintw(win, (int)(obstacles.x[i]*scaleh), (int)(obstacles.y[i]*scalew), "0");
     }
     wattroff(win, COLOR_PAIR(2)); 
     wattroff(win, A_BOLD); // Attiva il grassetto 
@@ -218,7 +210,7 @@ void drawTarget(WINDOW * win) {
     for(int i = 0; i < NUM_TARGET; i++){
         char val_str[2];
         sprintf(val_str, "%d", i/*targets.value[i]*/); // Converte il valore in stringa
-        mvwprintw(win, targets.x[i] /*+ HMARGIN + BMARGIN*/, targets.y[i] /*+ WMARGIN + BMARGIN*/, "%s", val_str); // Usa un formato esplicito
+        mvwprintw(win, targets.x[i] * scaleh, targets.y[i] * scalew, "%s", val_str); // Usa un formato esplicito
     } 
     wattroff(win, COLOR_PAIR(3)); 
     wattroff(win, A_BOLD); // Disattiva il grassetto
@@ -313,16 +305,18 @@ int main(int argc, char *argv[]) {
     tv.tv_usec = 1000;
     
     signal(SIGUSR1, sig_handler);
-    
+    signal(SIGWINCH, resizeHandler);
 
     initscr();
     start_color();
     curs_set(0);
     noecho();
     cbreak();
-    //getmaxyx(stdscr, nh, nw);
-    WINDOW * win = newwin(HEIGHT, WIDTH, 5, 5); 
-    
+    getmaxyx(stdscr, nh, nw);
+    win = newwin(nh, nw, 5, 5); 
+    scaleh = (float)nh / (float)WINDOW_LENGTH;
+    scalew = (float)nw / (float)WINDOW_WIDTH;
+
 
     // Definizione delle coppie di colori
     init_pair(1, COLOR_BLUE, COLOR_BLACK);     // Testo blu su sfondo nero
@@ -336,14 +330,6 @@ int main(int argc, char *argv[]) {
     mapInit(file);
     sleep(1);
 
-    // for(int i = 0; i < NUM_OBSTACLES; i++){
-    //     obstacles.x[i] = 29 - i;
-    //     obstacles.y[i]= 79 - i;
-    // }
-    // for(int i = 0; i < NUM_TARGET; i++){
-    //     targets.x[i] = i;
-    //     targets.y[i] = i;
-    // }
     while (1) {
 
         // Update the main window
