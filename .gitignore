@@ -12,3 +12,6 @@
 
 # Non ignorare i readme
 !*.md
+
+# Non ignorare i file .json
+!*.json

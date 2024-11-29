@@ -13,6 +13,7 @@
 #include <errno.h>
 #include "auxfunc.h"
 #include <signal.h>
+#include <cjson/cJSON.h>
 
 // process to whom that asked or received
 #define askwr 1
@@ -25,7 +26,6 @@
 #define HMARGIN 5
 #define WMARGIN 5
 #define BMARGIN 2
-#define SCALERATIO 1
 
 #define PERIODBB 10000  // [us]
 
@@ -44,6 +44,9 @@ Drone_bb drone;
 Targets targets;
 Obstacles obstacles;
 
+FILE *conffile;
+char jsonBuffer[100];
+
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
         handler(BLACKBOARD,100);
@@ -59,7 +62,7 @@ char send_targetobs_str[len_str_obstacles + len_str_targets + 2];
 
 void resizeHandler(int sig){
     getmaxyx(stdscr, nh, nw);  /* get the new screen size */
-    scaleh = ((float)nh / (float)WINDOW_LENGTH)*SCALERATIO;
+    scaleh = ((float)nh / (float)WINDOW_LENGTH);
     scalew = (float)nw / (float)WINDOW_WIDTH;
     endwin();
     initscr();
@@ -67,7 +70,7 @@ void resizeHandler(int sig){
     curs_set(0);
     noecho();
     win = newwin(nh, nw, 0, 0); 
-    }
+}
 
 void mapInit(FILE *file){
 
@@ -329,6 +332,41 @@ int main(int argc, char *argv[]) {
     
     mapInit(file);
     sleep(1);
+
+    char nome [100] = "mattia e chiara";
+    conffile = fopen("appsettings.json", "r");
+
+    if (conffile == NULL) {
+        perror("Error opening the file");
+        return EXIT_FAILURE;//1
+    }
+
+    int len = fread(jsonBuffer, 1, sizeof(jsonBuffer), conffile); 
+
+    fclose(conffile);
+
+    cJSON *json = cJSON_Parse(jsonBuffer);// parse the text to json object
+
+    if (json == NULL)
+    {
+        perror("Error parsing the file");
+        return EXIT_FAILURE;
+    }
+
+    conf_ptr gameConfig = malloc(sizeof(conf_ptr)); // allocate memory dinamically
+    
+    strcpy(gameConfig->difficulty, cJSON_GetObjectItemCaseSensitive(json, "Difficulty")->valuestring);
+    strcpy(gameConfig->playerName, cJSON_GetObjectItemCaseSensitive(json, "PlayerName")->valuestring);
+    gameConfig->startingLevel = cJSON_GetObjectItemCaseSensitive(json, "StartingLevel")->valueint;
+    
+    fprintf(file, "Player name: %s\n", gameConfig->playerName);
+    fprintf(file, "Difficulty: %s\n", gameConfig->difficulty);
+    fprintf(file, "Starting level: %d\n", gameConfig->startingLevel);
+    fflush(file);
+
+    cJSON_Delete(json);//clean
+    
+    free(gameConfig);//malloc --> clean //delete the memory dinamically allocated
 
     while (1) {
 

@@ -48,6 +48,15 @@ typedef struct
     int y[NUM_OBSTACLES];
 } Obstacles;
 
+typedef struct
+{
+    char playerName[100];
+    char difficulty[100];
+    int startingLevel;
+} Config;
+
+typedef Config *conf_ptr;
+
 int writeSecure(char* filename, char* data, int numeroRiga, char mode);
 int readSecure(char* filename, char* data, int numeroRiga);
 void handler(int id, int sleep);
