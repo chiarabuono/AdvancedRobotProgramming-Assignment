@@ -39,6 +39,10 @@
 
 #define DEFAULT 0
 #define MENU 1
+
+int nh, nw;
+float scaleh = 1.0, scalew = 1.0;
+
 int btnValues[9] =   {113, 119, 101,
                 97, 115, 100,
                 122, 120, 99};
@@ -127,6 +131,25 @@ void mainMenu(){
     }
 }
 
+void resizeHandler(int sig){
+    getmaxyx(stdscr, nh, nw);  /* get the new screen size */
+    scaleh = ((float)nh / (float)WINDOW_LENGTH);
+    scalew = (float)nw / (float)WINDOW_WIDTH;
+    endwin();
+    initscr();
+    start_color();
+    curs_set(0);
+    noecho();
+    werase(win);
+
+    win = newwin(nh, nw, 0, 0);
+    box(win, 0, 0);       
+    wrefresh(win);
+    btnSetUp(25*scaleh,27*scalew);
+    drawBtn(99, DEFAULT); //to make all the buttons white
+}
+
+
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Uso: %s <fd_str>\n", argv[0]);
@@ -169,90 +192,99 @@ int main(int argc, char *argv[]) {
     close(fds[recwr]);
 
     signal(SIGUSR1, sig_handler);
+    signal(SIGWINCH, resizeHandler);
 
     initscr();
     start_color();
     curs_set(0);
     noecho();
     cbreak();
+    nodelay(stdscr, TRUE);
+
     init_pair(1, COLOR_RED , COLOR_BLACK);  // Testo arancione su sfondo nero
 
-    win = newwin(HEIGHT, WIDTH, 5, 5);
+    getmaxyx(stdscr, nh, nw);
+    win = newwin(nh, nw, 5, 5); 
 
     //mainMenu();
 
     btnSetUp(BTNPOSR,BTNPOSC);
  
     while (1) {
+        int ch;
+        if ((ch = getch()) == ERR) {
+            //nessun tasto premuto dall'utente
+            usleep(100000);
+            werase(win);
+            box(win, 0, 0);       
+            wrefresh(win);
+            drawBtn(99, DEFAULT); //to make all the buttons white
+        }else {
+            //message to bb init
+            char msg [12];
 
-        //message to bb init
-        char msg [12];
+            for(int i = 0; i < 12; i++){
+                msg[i] = '\0';
+            }
+            
+            msg[0] = 'I';
+            msg[1] = ';';
 
-        for(int i = 0; i < 12; i++){
-            msg[i] = '\0';
+            //Refresh the auxiliary window
+            
+
+            int btn;
+            
+            // int ch = 99;
+            if (ch == btnValues[0]) {
+                btn = LEFTUP;
+                strcat(msg, moves[btn]);
+            } else if (ch == btnValues[1]) {
+                btn = UP;
+                strcat(msg, moves[btn]);
+            } else if (ch == btnValues[2]) {
+                btn = RIGHTUP;
+                strcat(msg, moves[btn]);
+            } else if (ch == btnValues[3]) {
+                btn = LEFT;
+                strcat(msg, moves[btn]);
+            } else if (ch == btnValues[4]) {
+                btn = CENTER;
+                strcat(msg, moves[btn]);
+            } else if (ch == btnValues[5]) {
+                btn = RIGHT;
+                strcat(msg, moves[btn]);
+            } else if (ch == btnValues[6]) {
+                btn = LEFTDOWN;
+                strcat(msg, moves[btn]);
+            } else if (ch == btnValues[7]) {
+                btn = DOWN;
+                strcat(msg, moves[btn]);
+            } else if (ch == btnValues[8]) {
+                btn = RIGHTDOWN;
+                strcat(msg, moves[btn]);
+            } else{
+                btn = 99;   //Any of the direction buttons pressed
+            } 
+
+            werase(win);
+            box(win, 0, 0);       
+            wrefresh(win);
+            drawBtn(btn, DEFAULT);
+            usleep(100000);
+            werase(win);
+            box(win, 0, 0);       
+            wrefresh(win);
+            drawBtn(99, DEFAULT); //to make all the buttons white
+
+            fprintf(file,"msg: %s\n", msg);
+            fflush(file);
+            // Send the message to the blackboard
+            char rec[2];
+            write(fds[askwr],msg,strlen(msg) + 1);
+            read(fds[recrd], &rec, 2);
         }
         
-        msg[0] = 'I';
-        msg[1] = ';';
-
-        //Refresh the auxiliary window
-        werase(win);
-        box(win, 0, 0);       
-        wrefresh(win);
-        drawBtn(99, DEFAULT); //to make all the buttons white
-
-        int btn;
-        int ch = getch();
-        // int ch = 99;
-        if (ch == btnValues[0]) {
-            btn = LEFTUP;
-            strcat(msg, moves[btn]);
-        } else if (ch == btnValues[1]) {
-            btn = UP;
-            strcat(msg, moves[btn]);
-        } else if (ch == btnValues[2]) {
-            btn = RIGHTUP;
-            strcat(msg, moves[btn]);
-        } else if (ch == btnValues[3]) {
-            btn = LEFT;
-            strcat(msg, moves[btn]);
-        } else if (ch == btnValues[4]) {
-            btn = CENTER;
-            strcat(msg, moves[btn]);
-        } else if (ch == btnValues[5]) {
-            btn = RIGHT;
-            strcat(msg, moves[btn]);
-        } else if (ch == btnValues[6]) {
-            btn = LEFTDOWN;
-            strcat(msg, moves[btn]);
-        } else if (ch == btnValues[7]) {
-            btn = DOWN;
-            strcat(msg, moves[btn]);
-        } else if (ch == btnValues[8]) {
-            btn = RIGHTDOWN;
-            strcat(msg, moves[btn]);
-        } else{
-            btn = 99;   //Any of the direction buttons pressed
-        } 
-
-        werase(win);
-        box(win, 0, 0);       
-        wrefresh(win);
-        drawBtn(btn, DEFAULT);
-        usleep(100000);
-        werase(win);
-        box(win, 0, 0);       
-        wrefresh(win);
-        drawBtn(99, DEFAULT); //to make all the buttons white
-
-        fprintf(file,"msg: %s\n", msg);
-        fflush(file);
-        // Send the message to the blackboard
-        char rec[2];
-        write(fds[askwr],msg,strlen(msg) + 1);
-        read(fds[recrd], &rec, 2);
-        
-        usleep(100000);
     }
     
     // Chiudiamo il file
