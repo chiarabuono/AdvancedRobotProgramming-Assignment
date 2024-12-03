@@ -6,9 +6,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include "auxfunc.h"
+#include <cjson/cJSON.h>
+
 
 const char *moves[] = {"upleft", "up", "upright", "left", "center", "right", "downleft", "down", "downright"};
-
+char jsonBuffer[MAX_FILE_SIZE];
 
 int writeSecure(char* filename, char* data, int numeroRiga, char mode) {
     if (mode != 'o' && mode != 'a') {
@@ -178,15 +180,6 @@ int readSecure(char* filename, char* data, int numeroRiga) {
     return 0;
 }
 
-
-// void fromStringtoDrone(Drone_bb *drone, const char *drone_str, FILE *file) {
-//     if (sscanf(drone_str, "%d;%d", &drone->x, &drone->y) != 2) {
-//         fprintf(file, "Error parsing drone position: %s\n", drone_str);
-//         fflush(file);
-//         exit(EXIT_FAILURE);
-//     }
-// }
-
 void fromStringtoDrone(Drone_bb *drone, const char *drone_str, FILE *file) {
     // Buffer temporaneo per contenere numeri di massimo 2 cifre più terminatore '\0'
     char x_str[3] = {0}; // 2 caratteri + '\0'
@@ -216,7 +209,6 @@ void fromStringtoForce(Force *force, const char *force_str, FILE *file) {
     }
 }
 
-// in obstacles: receive drone position and target positions
 void fromStringtoPositions(Drone_bb *drone, int *x, int *y, const char *str, FILE *file) {
     char *token;
     char *str_copy = strdup(str);  // Make a modifiable copy of the string
@@ -579,4 +571,108 @@ void handler(int id, int sleep) {
     char log_entry[256];
     snprintf(log_entry, sizeof(log_entry),"%d",sleep);
     writeSecure("log.txt", log_entry, id + 2, 'o');
+}
+
+
+
+//---------------------------------------------------
+//----------JSON LEADERBOARD HANDLING FUNCTIONS------
+//---------------------------------------------------
+
+//TODO: - FNINIRE DI CORREGGERE LE FUNZIONI
+//      -TESTARLE
+
+void loadLeaderboard(FILE *file, cJSON *json, const char *filename, Player **players, int *playerCount) {
+    file = fopen(filename, "r");
+    if (!file) {
+        perror("Error opening leaderboard file");
+        return;
+    }
+
+    char buffer[2048];
+    size_t bytesRead = fread(buffer, 1, sizeof(buffer) - 1, file);
+    fclose(file);
+
+    if (bytesRead <= 0) {
+        printf("Leaderboard file is empty or unreadable.\n");
+        return;
+    }
+
+    buffer[bytesRead] = '\0'; // Null-terminate the buffer
+
+    json = cJSON_Parse(buffer);
+    if (!json) {
+        printf("Error parsing JSON.\n");
+        return;
+    }
+
+    cJSON *leaderboardArray = cJSON_GetObjectItem(json, "leaderboard");
+    if (!cJSON_IsArray(leaderboardArray)) {
+        printf("No valid leaderboard found in JSON.\n");
+        cJSON_Delete(json);
+        return;
+    }
+
+    int count = cJSON_GetArraySize(leaderboardArray);
+    *playerCount = count;
+    *players = malloc(sizeof(Player) * count);
+
+    for (int i = 0; i < count; ++i) {
+        cJSON *playerJSON = cJSON_GetArrayItem(leaderboardArray, i);
+
+        cJSON *name = cJSON_GetObjectItem(playerJSON, "name");
+        cJSON *score = cJSON_GetObjectItem(playerJSON, "score");
+        cJSON *level = cJSON_GetObjectItem(playerJSON, "level");
+
+        if (cJSON_IsString(name) && cJSON_IsNumber(score) && cJSON_IsNumber(level)) {
+            strncpy((*players)[i].name, name->valuestring, sizeof((*players)[i].name) - 1);
+            (*players)[i].name[sizeof((*players)[i].name) - 1] = '\0'; // Ensure null-terminated
+            (*players)[i].score = score->valueint;
+            (*players)[i].level = level->valueint;
+        }
+    }
+
+    cJSON_Delete(json);
+}
+
+void saveLeaderboard(FILE *file, cJSON *json,const char *filename, Player *players, int playerCount) {
+    json = cJSON_CreateObject();
+    cJSON *leaderboardArray = cJSON_CreateArray();
+
+    for (int i = 0; i < playerCount; ++i) {
+        cJSON *playerJSON = cJSON_CreateObject();
+        cJSON_AddStringToObject(playerJSON, "name", players[i].name);
+        cJSON_AddNumberToObject(playerJSON, "score", players[i].score);
+        cJSON_AddNumberToObject(playerJSON, "level", players[i].level);
+        cJSON_AddItemToArray(leaderboardArray, playerJSON);
+    }
+
+    cJSON_AddItemToObject(json, "leaderboard", leaderboardArray);
+
+    char *jsonString = cJSON_Print(json);
+    file = fopen(filename, "w");
+    if (file) {
+        fprintf(file, "%s", jsonString);
+        fclose(file);
+    } else {
+        perror("Error writing leaderboard file");
+    }
+
+    free(jsonString);
+    cJSON_Delete(json);
+}
+
+void addPlayerToLeaderboard(Player **players, int *playerCount, const char *name, int score, int level) {
+    *players = realloc(*players, sizeof(Player) * (*playerCount + 1));
+    strncpy((*players)[*playerCount].name, name, sizeof((*players)[*playerCount].name) - 1);
+    (*players)[*playerCount].name[sizeof((*players)[*playerCount].name) - 1] = '\0'; // Ensure null-terminated
+    (*players)[*playerCount].score = score;
+    (*players)[*playerCount].level = level;
+    (*playerCount)++;
+}
+
+int comparePlayers(const void *a, const void *b) {
+    const Player *playerA = (const Player *)a;
+    const Player *playerB = (const Player *)b;
+    return playerB->score - playerA->score; // Descending order by score
 }

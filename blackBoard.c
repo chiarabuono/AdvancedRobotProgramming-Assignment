@@ -31,7 +31,6 @@
 
 int nh, nw;
 float scaleh = 1.0, scalew = 1.0;
-
 int pid;
 
 char ack [2] = "A\0";
@@ -45,7 +44,6 @@ Targets targets;
 Obstacles obstacles;
 
 FILE *conffile;
-char jsonBuffer[100];
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
@@ -69,7 +67,7 @@ void resizeHandler(int sig){
     start_color();
     curs_set(0);
     noecho();
-    win = newwin(nh, nw, 0, 0); 
+    win = newwin(nh, nw, 2, 0); 
 }
 
 void mapInit(FILE *file){
@@ -316,7 +314,7 @@ int main(int argc, char *argv[]) {
     noecho();
     cbreak();
     getmaxyx(stdscr, nh, nw);
-    win = newwin(nh, nw, 5, 5); 
+    win = newwin(nh, nw, 2, 0); 
     scaleh = (float)nh / (float)WINDOW_LENGTH;
     scalew = (float)nw / (float)WINDOW_WIDTH;
 

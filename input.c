@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include "auxfunc.h"
 #include <signal.h>
+#include <cjson/cJSON.h>
 
 // process that ask or receive
 #define askwr 1
@@ -43,10 +44,7 @@
 int nh, nw;
 float scaleh = 1.0, scalew = 1.0;
 
-int btnValues[9] =   {113, 119, 101,
-                97, 115, 100,
-                122, 120, 99};
-
+int btnValues[9] ={0};
 char *default_text[9] = {"L-UP", "UP", "R-UP", "LEFT", "CENTER", "RIGHT", "L-DOWN", "DOWN", "R-DOWN"};
 char *menu_text[9] = {"Q", "W", "E", "A", "S", "D", "Z", "X", "C"};
 
@@ -54,6 +52,9 @@ int pid;
 
 WINDOW * winBut[9]; 
 WINDOW * win;
+
+FILE *settingsfile;
+FILE *file;
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
@@ -149,6 +150,46 @@ void resizeHandler(int sig){
     drawBtn(99, DEFAULT); //to make all the buttons white
 }
 
+void readConfig(){
+    fprintf(file,"Reading configuration file\n");
+    fflush(file);
+
+    int len = fread(jsonBuffer, 1, sizeof(jsonBuffer), settingsfile); 
+    fclose(settingsfile);
+
+    cJSON *json = cJSON_Parse(jsonBuffer);// parse the text to json object
+
+    if (json == NULL){
+        perror("Error parsing the file");
+    }
+    conf_ptr gameConfig = malloc(sizeof(conf_ptr)); // allocate memory dinamically
+    
+    strcpy(gameConfig->difficulty, cJSON_GetObjectItemCaseSensitive(json, "Difficulty")->valuestring);
+    strcpy(gameConfig->playerName, cJSON_GetObjectItemCaseSensitive(json, "PlayerName")->valuestring);
+    gameConfig->startingLevel = cJSON_GetObjectItemCaseSensitive(json, "StartingLevel")->valueint;
+
+    //for array
+    cJSON *numbersArray = cJSON_GetObjectItemCaseSensitive(json, "DefaultBTN");//this is an array
+    int arraySize = cJSON_GetArraySize(numbersArray);
+    fprintf(file,"Array size: %d\n", arraySize);
+    fflush(file);
+
+    fprintf(file,"BtnValues:");
+    fflush(file);
+
+    for (int i = 0; i < arraySize; ++i) {
+        cJSON *element = cJSON_GetArrayItem(numbersArray, i);
+        if (cJSON_IsNumber(element)) {
+            fprintf(file,"%d,",btnValues[i] = element->valueint);
+            fflush(file);
+        }
+    }
+
+    cJSON_Delete(json);//clean
+    
+    free(gameConfig);//malloc --> clean //delete the memory dinamically allocated
+
+}
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -157,11 +198,21 @@ int main(int argc, char *argv[]) {
     }
     
     // Opening log file
-    FILE *file = fopen("outputinput.txt", "a");
+    file = fopen("outputinput.txt", "a");
+     
     if (file == NULL) {
         perror("Errore nell'apertura del file");
         exit(1);
     }
+
+    //Open config file
+    settingsfile = fopen("appsettings.json", "r");
+    if (settingsfile == NULL) {
+        perror("Error opening the file");
+        return EXIT_FAILURE;//1
+    }
+
+    readConfig();
 
     // FDs reading
     char *fd_str = argv[1];

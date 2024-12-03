@@ -22,6 +22,9 @@
 #define len_str_targets 6 * NUM_TARGET + 2
 #define len_str_obstacles 6 * NUM_OBSTACLES + 2
 
+#define MAX_LINE_LENGTH 100
+#define MAX_FILE_SIZE 1024
+
 extern const char *moves[9];
 
 
@@ -53,9 +56,17 @@ typedef struct
     char playerName[100];
     char difficulty[100];
     int startingLevel;
+    int defbtn[9];
 } Config;
 
+typedef struct {
+    char name[50];
+    int score;
+    int level;
+} Player;
+
 typedef Config *conf_ptr;
+extern char jsonBuffer[MAX_FILE_SIZE];
 
 int writeSecure(char* filename, char* data, int numeroRiga, char mode);
 int readSecure(char* filename, char* data, int numeroRiga);
