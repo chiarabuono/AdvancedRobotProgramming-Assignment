@@ -43,6 +43,8 @@ WINDOW * win;
 Drone_bb drone;
 Targets targets;
 Obstacles obstacles;
+Drone_bb prevDrone = {0, 0};
+int mask[NUM_TARGET] = {0};
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
@@ -56,6 +58,13 @@ char obstacles_str[len_str_obstacles];
 char send_dronetarget_str[len_str_targets + 10];
 char temp[len_str_targets + 2];
 char send_targetobs_str[len_str_obstacles + len_str_targets + 2];
+
+void storePreviousPosition(Drone_bb *drone) {
+
+    prevDrone.x = drone ->x;
+    prevDrone.y = drone ->y;
+
+}
 
 void resizeHandler(int sig){
     getmaxyx(stdscr, nh, nw);  /* get the new screen size */
@@ -85,6 +94,7 @@ void mapInit(FILE *file){
     fprintf(file, "Drone position: %s\n", drone_str);
     fflush(file);
     fromStringtoDrone(&drone, drone_str, file);
+    storePreviousPosition(&drone);
 
 
     // send drone position to target
@@ -181,8 +191,8 @@ void mapInit(FILE *file){
 }
 
 void drawDrone(WINDOW * win){
-    int row = (int)(drone.x * scaleh);
-    int col = (int)(drone.y * scalew);
+    int row = (int)(drone.y * scaleh);
+    int col = (int)(drone.x * scalew);
     wattron(win, A_BOLD); // Attiva il grassetto
     wattron(win, COLOR_PAIR(1));   
     mvwprintw(win, row - 1, col, "|");     
@@ -198,7 +208,7 @@ void drawObstacle(WINDOW * win){
     wattron(win, A_BOLD); // Attiva il grassetto
     wattron(win, COLOR_PAIR(2)); 
     for(int i = 0; i < NUM_OBSTACLES; i++){
-        mvwprintw(win, (int)(obstacles.x[i]*scaleh), (int)(obstacles.y[i]*scalew), "0");
+        mvwprintw(win, (int)(obstacles.y[i]*scaleh), (int)(obstacles.x[i]*scalew), "0");
     }
     wattroff(win, COLOR_PAIR(2)); 
     wattroff(win, A_BOLD); // Attiva il grassetto 
@@ -208,9 +218,10 @@ void drawTarget(WINDOW * win) {
     wattron(win, A_BOLD); // Attiva il grassetto
     wattron(win, COLOR_PAIR(3)); 
     for(int i = 0; i < NUM_TARGET; i++){
+        if (mask[i] == 1) continue;
         char val_str[2];
         sprintf(val_str, "%d", i/*targets.value[i]*/); // Converte il valore in stringa
-        mvwprintw(win, targets.x[i] * scaleh, targets.y[i] * scalew, "%s", val_str); // Usa un formato esplicito
+        mvwprintw(win, (int)(targets.y[i] * scaleh), (int)(targets.x[i] * scalew), "%s", val_str); // Usa un formato esplicito
     } 
     wattroff(win, COLOR_PAIR(3)); 
     wattroff(win, A_BOLD); // Disattiva il grassetto
@@ -235,6 +246,28 @@ int randomSelect(int n) {
     
     return random_number % n;
 }
+
+
+
+void detectCollision(Drone_bb* drone, Drone_bb * prev, Targets* targets, FILE* file) {
+    fprintf(file, "PREV(%d, %d), DRONE(%d, %d)\n TARGET:\n", prev->x, prev->y, drone->x, drone->y);
+    for (int i = 0; i < NUM_TARGET; i++) {
+        fprintf(file, " (%d, %d)", targets->x[i], targets->y[i]);
+        if (((prev->x <= targets->x[i] && targets->x[i] <= drone->x) &&
+            (prev->y <= targets->y[i] && targets->y[i] <= drone->y) )||
+            ((prev->x >= targets->x[i] && targets->x[i] >= drone->x) &&
+            (prev->y >= targets->y[i] && targets->y[i] >= drone->y) )){
+                mask[i] = 1;
+                printf("BOOM!\n");
+                fprintf(file, "BOOM!\n");
+                fflush(stdout);
+            }
+        fflush(file);
+    }
+
+}
+
+
 
 int main(int argc, char *argv[]) {
 
@@ -299,6 +332,7 @@ int main(int argc, char *argv[]) {
     ssize_t bytesRead;
     fd_set readfds;
     struct timeval tv;
+    
 
     //Setting select timeout
     tv.tv_sec = 0;
@@ -331,7 +365,7 @@ int main(int argc, char *argv[]) {
     sleep(1);
 
     while (1) {
-
+        
         // Update the main window
         werase(win);
         box(win, 0, 0);
@@ -347,6 +381,8 @@ int main(int argc, char *argv[]) {
         FD_SET(fds[INPUT][askrd], &readfds);
         FD_SET(fds[OBSTACLE][askrd], &readfds);
         FD_SET(fds[TARGET][askrd], &readfds); 
+
+        
 
         int fdsQueue [4];
         int ready = 0;
@@ -378,11 +414,12 @@ int main(int argc, char *argv[]) {
         if(ready > 0){
             unsigned int rand = randomSelect(ready);
             int selected = fdsQueue[rand];
+            //detectCollision(&drone, &prevDrone, &targets, file);
 
             if (selected == fds[DRONE][askrd]){
                 fprintf(file, "selected drone\n");
                 fflush(file);
-
+                
                 char rec[2];
                 read(fds[DRONE][askrd], &rec, 2);
                 fprintf(file, "Received: %s\n", rec);
@@ -390,6 +427,7 @@ int main(int argc, char *argv[]) {
                 if(rec[0] == 'R'){
                     fprintf(file, "Asking drone position to [DRONE]\n");
                     fflush(file);
+                    
                     if (write(fds[DRONE][recwr], "A", 2) == -1) {
                         fprintf(file, "[BB] Error asking drone position\n");
                         fflush(file);
@@ -400,7 +438,7 @@ int main(int argc, char *argv[]) {
                         fflush(file);
                         exit(EXIT_FAILURE);
                     }
-                    
+                    storePreviousPosition(&drone);
                     fromStringtoDrone(&drone, drone_str, file);
                    
                     fprintf(file, "Drone position: %s\n", drone_str);
@@ -457,6 +495,7 @@ int main(int argc, char *argv[]) {
                 }
                 fprintf(file, "Drone position: %s\n", drone_str);
                 fflush(file);
+                storePreviousPosition(&drone);
                 fromStringtoDrone(&drone, drone_str, file);    
 
             } else if (selected == fds[OBSTACLE][askrd] || selected == fds[TARGET][askrd]){
@@ -554,6 +593,7 @@ int main(int argc, char *argv[]) {
                         exit(EXIT_FAILURE);
                     }
                     
+                    storePreviousPosition(&drone);
                     fromStringtoDrone(&drone, drone_str, file);
                    
                     fprintf(file, "Drone position: %s\n", drone_str);

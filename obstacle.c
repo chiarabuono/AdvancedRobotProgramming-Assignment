@@ -71,8 +71,7 @@ Obstacles createObstacles(Drone_bb drone, Targets targets) {
 
 // Simulate obstacle moving
 
-void obstaclesMoving(Obstacles obstacles)
-{
+void obstaclesMoving(Obstacles obstacles) {
     int num_moves = sizeof(moves) / sizeof(moves[0]);
     for (int i = 0; i < NUM_OBSTACLES; i++)
     {
@@ -115,9 +114,7 @@ void obstaclesMoving(Obstacles obstacles)
     }
 }
 
-
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Uso: %s <fd_str>\n", argv[0]);
         exit(1);

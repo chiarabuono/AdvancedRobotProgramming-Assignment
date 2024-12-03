@@ -18,6 +18,9 @@
 #define ETA 0.2
 
 #define FORCE_THRESHOLD 5 //[m]
+#define MIN_THRESHOLD 2 //[m]
+
+#define TARGET_DETECTION 1
 
 #define len_str_targets 6 * NUM_TARGET + 2
 #define len_str_obstacles 6 * NUM_OBSTACLES + 2
