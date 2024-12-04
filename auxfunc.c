@@ -9,6 +9,8 @@
 
 const char *moves[] = {"upleft", "up", "upright", "left", "center", "right", "downleft", "down", "downright"};
 
+int numTarget = 5;
+int numObstacle = 10;
 
 int writeSecure(char* filename, char* data, int numeroRiga, char mode) {
     if (mode != 'o' && mode != 'a') {

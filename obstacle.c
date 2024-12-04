@@ -30,14 +30,14 @@ void sig_handler(int signo) {
 }
 
 int canSpawn(int x_pos, int y_pos, Targets targets) {
-    for (int i = 0; i < NUM_TARGET; i++) {
+    for (int i = 0; i < numTarget; i++) {
         if (abs(x_pos - targets.x[i]) <= NO_SPAWN_DIST && abs(y_pos - targets.y[i]) <= NO_SPAWN_DIST) return 0; 
     }
     return 1;
 }
 
 int canSpawnPrev(int x_pos, int y_pos, Obstacles obstacles) {
-    for (int i = 0; i < NUM_OBSTACLES; i++) {
+    for (int i = 0; i < numTarget; i++) {
         if (abs(x_pos - obstacles.x[i]) <= NO_SPAWN_DIST && abs(y_pos - obstacles.y[i]) <= NO_SPAWN_DIST) return 0;
     }
     return 1;
@@ -47,12 +47,12 @@ Obstacles createObstacles(Drone_bb drone, Targets targets) {
     Obstacles obstacles;
     int x_pos, y_pos;
 
-    for( int i = 0; i < NUM_OBSTACLES; i++){
+    for( int i = 0; i < MAX_OBSTACLES; i++){
         obstacles.x[i] = 0;
         obstacles.y[i] = 0;
     }
     
-    for (int i = 0; i < NUM_OBSTACLES; i++)
+    for (int i = 0; i < numObstacle; i++)
     {
         do{
             x_pos = rand() % (WINDOW_LENGTH-1);
@@ -73,7 +73,7 @@ Obstacles createObstacles(Drone_bb drone, Targets targets) {
 
 void obstaclesMoving(Obstacles obstacles) {
     int num_moves = sizeof(moves) / sizeof(moves[0]);
-    for (int i = 0; i < NUM_OBSTACLES; i++)
+    for (int i = 0; i < numObstacle; i++)
     {
         const char *move = moves[rand() % num_moves];
 
@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
     char obstacle_str[len_str_obstacles];
     char dronetarget_str[10 + len_str_targets];
 
-    for( int i = 0; i < NUM_OBSTACLES; i++){
+    for( int i = 0; i < MAX_OBSTACLES; i++){
         obstacles.x[i] = 0;
         obstacles.y[i] = 0;
     }
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
         obstacles = createObstacles(drone, targets);
 
         // Sending obstacles positions
-        fromPositiontoString(obstacles.x, obstacles.y, NUM_OBSTACLES, obstacle_str, sizeof(obstacle_str), file);
+        fromPositiontoString(obstacles.x, obstacles.y, MAX_OBSTACLES, obstacle_str, sizeof(obstacle_str), file);
 
         fprintf(file, "Sending obstacle positions: %s\n", obstacle_str);
         fflush(file);

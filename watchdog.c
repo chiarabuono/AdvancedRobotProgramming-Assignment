@@ -32,7 +32,6 @@ int main(int argc, char *argv[]) {
     char datareaded[200];
     if (readSecure("log.txt", datareaded,1) == -1) {
         perror("Error reading the log file");
-        fclose(file);
         exit(1);
     }
 

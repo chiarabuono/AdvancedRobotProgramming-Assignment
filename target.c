@@ -18,7 +18,6 @@
 #define recrd 2
 
 // management target
-#define MAX_TARGET_VALUE 9
 #define PERIODT 100000
 
 int pid;
@@ -26,14 +25,17 @@ float reset_period = 10; // [s]
 float second = 1000000;
 float reset = 0;
 
-void sig_handler(int signo) {
-    if (signo == SIGUSR1) {
-        handler(TARGET,100);
-    }
-}
+int fds[4]; 
+FILE *file;
+
+Drone_bb drone;
+Targets targets;
+
+char drone_str[80];
+char str[len_str_targets];
 
 int canSpawnPrev(int x_pos, int y_pos, Targets targets) {
-    for (int i = 0; i < NUM_TARGET; i++) {
+    for (int i = 0; i < numTarget; i++) {
         if (abs(x_pos - targets.x[i]) <= NO_SPAWN_DIST && abs(y_pos - targets.y[i]) <= NO_SPAWN_DIST) return 0;
     }
     return 1;
@@ -43,12 +45,12 @@ Targets createTargets(Drone_bb drone) {
     Targets targets;
     int x_pos, y_pos;
 
-    for( int i = 0; i < NUM_TARGET; i++){
+    for( int i = 0; i < MAX_TARGET; i++){
         targets.x[i] = 0;
         targets.y[i] = 0;
     }
 
-    for (int i = 0; i < NUM_TARGET; i++)
+    for (int i = 0; i < numTarget; i++)
     {
         do{
             x_pos = rand() % (WINDOW_LENGTH-1);
@@ -66,7 +68,7 @@ Targets createTargets(Drone_bb drone) {
 
 void targetsMoving(Targets targets) {
     int num_moves = sizeof(moves) / sizeof(moves[0]);
-    for (int i = 0; i < NUM_TARGET; i++) {
+    for (int i = 0; i < numTarget; i++) {
         const char* move = moves[rand() % num_moves];
 
         int up_condition = (targets.y[i] > 1);
@@ -98,6 +100,47 @@ void targetsMoving(Targets targets) {
     }
 }
 
+void refreshMap(){
+    if (write(fds[askwr], "R", 2) == -1) {
+                    perror("[TARGET] Ready not sended correctly\n");
+                    exit(EXIT_FAILURE);
+                }
+            fprintf(file, "[TARGET] target ready\n");
+            fflush(file);
+
+            if (read(fds[recrd], &drone_str, sizeof(drone_str)) == -1){
+                perror("[TA] Error reading drone position from [BB]");
+                exit(EXIT_FAILURE);
+            }
+
+            fprintf(file, "Reading drone position: %s\nComputing target position\n", drone_str);
+            fflush(file);
+
+            fromStringtoDrone(&drone, drone_str, file);
+            targets = createTargets(drone);             // Create target vector
+            fromPositiontoString(targets.x, targets.y, MAX_TARGET, str, sizeof(str), file);
+
+            fprintf(file, "Sending target position to [BB]%s\n", str);
+            fflush(file);
+    
+            if (write(fds[askwr], &str, sizeof(str)) == -1) {
+                perror("[TA] Error sending target position to [BB]");
+                exit(EXIT_FAILURE);
+            }
+}
+
+void sig_handler(int signo) {
+    if (signo == SIGUSR1) {
+        handler(TARGET,100);
+    }
+}
+
+void newMap(int signo){
+    if (signo == SIGUSR2) {
+        reset = 0;
+        refreshMap(); 
+    }
+}
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -106,7 +149,7 @@ int main(int argc, char *argv[]) {
     }
     
     // Opening log file
-    FILE *file = fopen("outputtarget.txt", "a");
+    file = fopen("outputtarget.txt", "a");
     if (file == NULL) {
         perror("Errore nell'apertura del file");
         exit(1);
@@ -114,7 +157,6 @@ int main(int argc, char *argv[]) {
 
     // FDs reading
     char *fd_str = argv[1];
-    int fds[4]; 
     int index = 0;
     
     char *token = strtok(fd_str, ",");
@@ -141,14 +183,9 @@ int main(int argc, char *argv[]) {
     close(fds[recwr]);
 
     signal(SIGUSR1, sig_handler);
-
-    Drone_bb drone;
-    Targets targets;
-
-    char drone_str[80];
-    char str[len_str_targets];
+    signal(SIGUSR2, newMap);
     
-    for( int i = 0; i < NUM_TARGET; i++){
+    for( int i = 0; i < MAX_TARGET; i++){
         targets.x[i] = 0;
         targets.y[i] = 0;
     }
@@ -163,7 +200,7 @@ int main(int argc, char *argv[]) {
 
     fromStringtoDrone(&drone, drone_str, file);
     targets = createTargets(drone);             // Create target vector
-    fromPositiontoString(targets.x, targets.y, NUM_TARGET, str, sizeof(str), file);
+    fromPositiontoString(targets.x, targets.y, MAX_TARGET, str, sizeof(str), file);
 
     fprintf(file, "Sending target position to [BB]\n");
     fflush(file);
@@ -179,32 +216,7 @@ int main(int argc, char *argv[]) {
         reset += PERIODT/second;
         if (reset >= reset_period){
             reset = 0;
-            if (write(fds[askwr], "R", 2) == -1) {
-                    perror("[TARGET] Ready not sended correctly\n");
-                    exit(EXIT_FAILURE);
-                }
-            fprintf(file, "[TARGET] target ready\n");
-            fflush(file);
-
-            if (read(fds[recrd], &drone_str, sizeof(drone_str)) == -1){
-                perror("[TA] Error reading drone position from [BB]");
-                exit(EXIT_FAILURE);
-            }
-
-            fprintf(file, "Reading drone position: %s\nComputing target position\n", drone_str);
-            fflush(file);
-
-            fromStringtoDrone(&drone, drone_str, file);
-            targets = createTargets(drone);             // Create target vector
-            fromPositiontoString(targets.x, targets.y, NUM_TARGET, str, sizeof(str), file);
-
-            fprintf(file, "Sending target position to [BB]%s\n", str);
-            fflush(file);
-    
-            if (write(fds[askwr], &str, sizeof(str)) == -1) {
-                perror("[TA] Error sending target position to [BB]");
-                exit(EXIT_FAILURE);
-            }
+            refreshMap();
         }
         // targetsMoving(targets);
         usleep(PERIODT);

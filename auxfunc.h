@@ -12,8 +12,8 @@
 #define WINDOW_WIDTH 100
 #define WINDOW_LENGTH 100
 
-#define NUM_TARGET 5
-#define NUM_OBSTACLES 10
+#define MAX_TARGET 5
+#define MAX_OBSTACLES 10
 #define NO_SPAWN_DIST 5
 #define ETA 0.2
 
@@ -22,11 +22,13 @@
 
 #define TARGET_DETECTION 1
 
-#define len_str_targets 6 * NUM_TARGET + 2
-#define len_str_obstacles 6 * NUM_OBSTACLES + 2
+#define len_str_targets 6 * MAX_TARGET + 2
+#define len_str_obstacles 6 * MAX_OBSTACLES + 2
 
 extern const char *moves[9];
 
+extern int numTarget;
+extern int numObstacle;
 
 typedef struct {
     int x;
@@ -40,15 +42,15 @@ typedef struct {
 } Force;
 
 typedef struct {
-    int x[NUM_TARGET];
-    int y[NUM_TARGET];
-    int value[NUM_TARGET];
+    int x[MAX_TARGET];
+    int y[MAX_TARGET];
+    int value[MAX_TARGET];
 } Targets;
 
 typedef struct
 {
-    int x[NUM_OBSTACLES];
-    int y[NUM_OBSTACLES];
+    int x[MAX_OBSTACLES];
+    int y[MAX_OBSTACLES];
 } Obstacles;
 
 int writeSecure(char* filename, char* data, int numeroRiga, char mode);

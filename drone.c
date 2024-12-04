@@ -103,16 +103,16 @@ Force drone_force(Drone *p, float mass, float K, char* direction) {
             force.x = fabs(force.x);
         } else if (strcmp(direction, "left") == 0 || strcmp(direction, "upleft") == 0 || strcmp(direction, "downleft") == 0) {
             force.x = -fabs(force.x);
-        } else if (strcmp(direction, "up") == 0 || strcmp(direction, "down") == 0) {
+        } else if (strcmp(direction, "up") == 0 || strcmp(direction, "down") == 0 || strcmp(direction, "center") == 0) {
             force.x = 0; // Nessuna forza lungo x
-        }
+        } 
 
         // Imposta direzione y
         if (strcmp(direction, "up") == 0 || strcmp(direction, "upleft") == 0 || strcmp(direction, "upright") == 0) {
             force.y = -fabs(force.y);
         } else if (strcmp(direction, "down") == 0 || strcmp(direction, "downleft") == 0 || strcmp(direction, "downright") == 0) {
             force.y = fabs(force.y);
-        } else if (strcmp(direction, "left") == 0 || strcmp(direction, "right") == 0) {
+        } else if (strcmp(direction, "left") == 0 || strcmp(direction, "right") == 0 || strcmp(direction, "center") == 0 ) {
             force.y = 0; // Nessuna forza lungo y
         }
     } else {
@@ -163,7 +163,7 @@ Force obstacle_force(Drone *drone, Obstacles obstacles, FILE* file) {
     Force force = {0, 0};
     float deltaX, deltaY, distance, distance2, alpha, adjustedForceX, adjustedForceY;
 
-    for (int i = 0; i < NUM_OBSTACLES; i++) {
+    for (int i = 0; i < numObstacle; i++) {
         deltaX = drone->x - obstacles.x[i];
         deltaY = drone->y - obstacles.y[i];
         distance2 = pow(deltaX, 2) + pow(deltaY, 2);
@@ -202,7 +202,7 @@ Force target_force(Drone *drone, Targets targets) {
     Force force = {0, 0};
     float deltaX, deltaY, distance, distance2;
 
-    for (int i = 0; i < NUM_TARGET; i++) {
+    for (int i = 0; i < numTarget; i++) {
         deltaX = targets.x[i] - drone->x;
         deltaY = targets.y[i] - drone->y;
         distance2 = pow(deltaX, 2) + pow(deltaY, 2);
@@ -313,6 +313,8 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     } 
 
+    fprintf(file, "[DRONE] Received map: %s\n", data);
+    fflush(file);
     fromStringtoPositionsWithTwoTargets(targets.x, targets.y, obstacles.x, obstacles.y, data, file);
             
     //sleep(1);
