@@ -163,17 +163,16 @@ Force obstacle_force(Drone *drone, Obstacles obstacles, FILE* file) {
     Force force = {0, 0};
     float deltaX, deltaY, distance, distance2, alpha, adjustedForceX, adjustedForceY;
 
+    fprintf(file, "drone (%f, %f)\n", drone->x, drone->y);
+    fflush(file);
     for (int i = 0; i < numObstacle; i++) {
         deltaX = drone->x - obstacles.x[i];
         deltaY = drone->y - obstacles.y[i];
-        distance2 = pow(deltaX, 2) + pow(deltaY, 2);
-        distance = sqrt(distance2);
+        distance = sqrt(pow(deltaX, 2) + pow(deltaY, 2));
 
-        if (i == 0) {
-            fprintf(file, "drone (%f, %f) obstacle (%d, %d)\n", drone->x, drone->y, obstacles.x[i], obstacles.y[i]);
-            fprintf(file, "distance %f\n", distance);
-            fflush(file);
-        }
+        fprintf(file, "(%d, %d, %f)\t", obstacles.x[i], obstacles.y[i], distance);
+        fflush(file);
+
         if (distance > FORCE_THRESHOLD) {
             continue; // Beyond influence radius
         }
@@ -184,7 +183,7 @@ Force obstacle_force(Drone *drone, Obstacles obstacles, FILE* file) {
             }
         */
 
-        float repulsion = ETA * pow(((1/distance) - (1/FORCE_THRESHOLD)), 2)/distance;
+        float repulsion = 1000*ETA * pow(((1/distance) - (1/FORCE_THRESHOLD)), 2)/distance;
         fprintf(file, "repulsion %f\n", repulsion);
         fflush(file);
         adjustedForceX = repulsion * cos(alpha);
@@ -205,16 +204,14 @@ Force target_force(Drone *drone, Targets targets) {
     for (int i = 0; i < numTarget; i++) {
         deltaX = targets.x[i] - drone->x;
         deltaY = targets.y[i] - drone->y;
-        distance2 = pow(deltaX, 2) + pow(deltaY, 2);
-
-        distance = sqrt(distance2);
+        distance = sqrt(pow(deltaX, 2) + pow(deltaY, 2));
 
         if (distance > FORCE_THRESHOLD)
-            continue; // Ignore very close targets
+            continue;
 
-        float attraction = ETA * distance; // Linear or quadratic attraction
-        force.x -= attraction * (deltaX / distance);
-        force.y -= attraction * (deltaY / distance);
+        float attraction = 10*ETA * pow(((1/distance) - (1/FORCE_THRESHOLD)), 2)/distance;
+        force.x += attraction * (deltaX / distance);
+        force.y += attraction * (deltaY / distance);
     }
 
     return force;
@@ -222,11 +219,11 @@ Force target_force(Drone *drone, Targets targets) {
 
 Force total_force(Force drone, Force obstacle, Force target, FILE* file){
     Force total;
-    total.x = drone.x; //+ obstacle.x + target.x;
-    total.y = drone.y; //+ obstacle.y + target.y;
+    total.x = drone.x + obstacle.x + target.x;
+    total.y = drone.y + obstacle.y + target.y;
 
     if (obstacle.x != 0) fprintf(file, "[OB FORCE] (%lf, %lf)\n", obstacle.x, obstacle.y);
-    else fprintf(file, "nope");
+    // else fprintf(file, "nope");
     // fprintf(file, "[TA FORCE] (%lf, %lf)\n", target.x, target.y);
     // fprintf(file, "[DR FORCE] (%lf, %lf)\n", drone.x, drone.y);
     // fprintf(file, "[TOTAL] (%lf, %lf)\n", total.x, total.y);
@@ -296,6 +293,16 @@ int main(int argc, char *argv[]) {
     Targets targets;
     Obstacles obstacles;
 
+    for (int i = 0; i < MAX_TARGET; i++) {
+        targets.x[i] = 0;
+        targets.y[i] = 0;
+    }
+
+    for (int i = 0; i < MAX_OBSTACLES; i++) {
+        obstacles.x[i] = 0;
+        obstacles.y[i] = 0;
+    }
+
     char data[200];
     char drone_str[6];
     int bytesRead;
@@ -315,6 +322,7 @@ int main(int argc, char *argv[]) {
 
     fprintf(file, "[DRONE] Received map: %s\n", data);
     fflush(file);
+    memmove(data, data + 1, strlen(data));
     fromStringtoPositionsWithTwoTargets(targets.x, targets.y, obstacles.x, obstacles.y, data, file);
             
     //sleep(1);
@@ -344,8 +352,6 @@ int main(int argc, char *argv[]) {
 
             // computing new force on the drone
             force_t = target_force(&drone, targets);
-            fprintf(file, "obstacle[0] x: %d, y: %d\n", obstacles.x[0], obstacles.y[0]);
-            fflush(file);
             force_o = obstacle_force(&drone, obstacles, file);
             force_d = drone_force(&drone, DRONEMASS, K, directions);
             force = total_force(force_d, force_o, force_t, file);
@@ -377,8 +383,6 @@ int main(int argc, char *argv[]) {
             strcpy(directions, extractedMsg);
 
             // 'A' case
-            fprintf(file, "obstacle[0] x: %d, y: %d\n", obstacles.x[0], obstacles.y[0]);
-            fflush(file);
             force_t = target_force(&drone, targets);
             force_o = obstacle_force(&drone, obstacles, file);
             force_d = drone_force(&drone, DRONEMASS, K, directions);
@@ -398,8 +402,6 @@ int main(int argc, char *argv[]) {
 
             break;
         case 'A':
-            fprintf(file, "obstacle[0] x: %d, y: %d\n", obstacles.x[0], obstacles.y[0]);
-            fflush(file);
             force_t = target_force(&drone, targets);
             force_o = obstacle_force(&drone, obstacles, file);
             force_d = drone_force(&drone, DRONEMASS, K, directions);

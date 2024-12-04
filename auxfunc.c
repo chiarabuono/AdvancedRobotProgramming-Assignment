@@ -274,59 +274,35 @@ void fromStringtoPositions(Drone_bb *drone, int *x, int *y, const char *str, FIL
 }
 
 void fromStringtoPositionsWithTwoTargets(int *x1, int *y1, int *x2, int *y2, const char *str, FILE *file) {
-    char *token;
-    char *str_copy = strdup(str);  // Make a modifiable copy of the string
-    char *saveptr;
+    char *token, *subtoken;
+    char *str_copy = strdup(str);  // Copy the input string
+    if (!str_copy) {
+        fprintf(file, "Error: strdup failed\n");
+        return;
+    }
+    char *saveptr1, *saveptr2;
     int i = 0;
 
-    // Split by semicolon (;)
-    token = strtok_r(str_copy, ";", &saveptr);
-    while (token != NULL) {
-        if (i == 0) {
-            // Parse second semicolon-separated part into x array
-            int j = 0;
-            char *subtoken, *subsaveptr;
-            subtoken = strtok_r(token, ",", &subsaveptr);
-            while (subtoken != NULL) {
-                x1[j++] = atoi(subtoken);
-                subtoken = strtok_r(NULL, ",", &subsaveptr);
-            }
-        } else if (i == 1) {
-            // Parse third semicolon-separated part into y array
-            int k = 0;
-            char *subtoken, *subsaveptr;
-            subtoken = strtok_r(token, ",", &subsaveptr);
-            while (subtoken != NULL) {
-                y1[k++] = atoi(subtoken);
-                subtoken = strtok_r(NULL, ",", &subsaveptr);
-            }
-        } else if (i == 2) {
-            // Parse third semicolon-separated part into y array
-            int k = 0;
-            char *subtoken, *subsaveptr;
-            subtoken = strtok_r(token, ",", &subsaveptr);
-            while (subtoken != NULL) {
-                x2[k++] = atoi(subtoken);
-                subtoken = strtok_r(NULL, ",", &subsaveptr);
-            }
-        } else if (i == 3) {
-            // Parse third semicolon-separated part into y array
-            int k = 0;
-            char *subtoken, *subsaveptr;
-            subtoken = strtok_r(token, ",", &subsaveptr);
-            while (subtoken != NULL) {
-                y2[k++] = atoi(subtoken);
-                subtoken = strtok_r(NULL, ",", &subsaveptr);
-            }
-        } 
 
-        // Move to the next part
-        token = strtok_r(NULL, ";", &saveptr);
+    token = strtok_r(str_copy, ";", &saveptr1);
+    while (token != NULL) {
+        int k = 0;
+        subtoken = strtok_r(token, ",", &saveptr2);
+        while (subtoken != NULL) {
+            int value = atoi(subtoken);
+            if (i == 0) x1[k++] = value;
+            else if (i == 1) y1[k++] = value;
+            else if (i == 2) x2[k++] = value;
+            else if (i == 3) y2[k++] = value;
+
+            subtoken = strtok_r(NULL, ",", &saveptr2);
+        }
+
+        token = strtok_r(NULL, ";", &saveptr1);
         i++;
     }
 
-    free(str_copy);  // Free the dynamically allocated memory
-
+    free(str_copy);  // Free memory
 }
 
 // void parseArray(int *array, const char *data, int max_size) {
