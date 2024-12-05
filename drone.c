@@ -53,27 +53,35 @@ void fillDirections(const char *filled[], int *size) {
 }
 
 // Update drone position
-Drone updatePosition(Drone *p, char *direction, Force force) {
+void updatePosition(Drone *p, Force force, int mass, Speed *speed, Speed *speedPrev, FILE* file) {
 
-    p->previous_x[1] = p->previous_x[0];  // Il secondo valore precedente diventa il primo
-    p->previous_x[0] = p->x;  // Aggiorna il primo valore precedente con la posizione attuale
-    p->previous_y[1] = p->previous_y[0];  // Lo stesso per y
+    p->previous_x[1] = p->previous_x[0]; 
+    p->previous_x[0] = p->x;  
+    p->previous_y[1] = p->previous_y[0];
     p->previous_y[0] = p->y;
 
-    // conditions to stay inside the window
-    // int up_condition = (p->y > 0) ? 1 : 0;
-    // int down_condition = (p->y < WINDOW_WIDTH - 1) ? 1 : 0;
-    // int right_condition = (p->x < WINDOW_LENGTH - 1) ? 1 : 0;
-    // int left_condition = (p->x > 0) ? 1 : 0;
+    speedPrev->x = speed->x;
+    speedPrev->y = speed->y;
 
-    p->y += force.y;
-    p->x += force.x;
+    float speedX = (speedPrev->x + force.x/mass * (1.0f/PERIOD));
+    float speedY = (speedPrev->y + force.y/mass * (1.0f/PERIOD));
+
+    speed->x = speedX;
+    speed->y = speedY;
+
+    fprintf(file, "speedPrev (%f, %f)\t Force (%f, %f)", speedX, speedY, force.x, force.y);
+    fprintf(file, "delta (%f, %f)\n", speedX * (1.0f/PERIOD), speedY * (1.0f/PERIOD));
+    fflush(file);
+
+    p->x += 10 * speedX * (1.0f/PERIOD);
+    p->y += 10* speedY * (1.0f/PERIOD);
+    
+
 
     if (p->x < 0) p->x = 0;
     if (p->y < 0) p->y = 0;
     if (p->x >= WINDOW_LENGTH) p->x = WINDOW_LENGTH - 1;
     if (p->y >= WINDOW_WIDTH) p->y = WINDOW_WIDTH - 1;
-    return *p;
 }
 
 
@@ -92,8 +100,8 @@ Force drone_force(Drone *p, float mass, float K, char* direction) {
     float derivative2y = (p->previous_y[1] + p->y - 2 * p->previous_y[0]) / (PERIOD * PERIOD);
 
     // Forze derivate dalle equazioni del moto
-    force.x = mass * derivative2x + K * derivative1x + 1;
-    force.y = mass * derivative2y + K * derivative1y + 1;
+    force.x = mass * derivative2x - K * derivative1x +1;
+    force.y = mass * derivative2y - K * derivative1y +1;
 
     // Verifica della validità di direction
     
@@ -122,41 +130,6 @@ Force drone_force(Drone *p, float mass, float K, char* direction) {
 
     return force;
 }
-
-// Force drone_force(Drone *p, float mass, float K, char* direction) {
-
-//     Force force;
-
-//     float derivative1x = (p->x - p->previous_x[0]) / PERIOD;
-//     float derivative2x = (p->previous_x[1] + p->x - 2 * p->previous_x[0]) / (PERIOD * PERIOD);
-//     force.x = mass * derivative2x + K * derivative1x;
-//     if (direction != NULL) force.x += 1;
-
-//     float derivative1y = (p->y - p->previous_y[0]) / PERIOD;
-//     float derivative2y = (p->previous_y[1] + p->y - 2 * p->previous_y[0]) / (PERIOD * PERIOD);
-//     force.y = mass * derivative2y + K * derivative1y;
-//     if (direction != NULL) force.y = 1;
-
-//     if (strcmp(direction, "up") == 0 || strcmp(direction, "upleft") == 0 || strcmp(direction, "upright") == 0)
-//         force.y = -abs(force.y);
-//     if (strcmp(direction, "right") == 0 || strcmp(direction, "upright") == 0 || strcmp(direction, "downright") == 0) 
-//         force.x =  abs(force.x);
-//     if (strcmp(direction, "down") == 0 || strcmp(direction, "downleft") == 0 || strcmp(direction, "downright") == 0)  
-//         force.y =  abs(force.y);
-//     if (strcmp(direction, "left") == 0 || strcmp(direction, "upleft") == 0 || strcmp(direction, "downleft") == 0)  
-//         force.x = -abs(force.x);    
-
-//     if (strcmp(direction, "up") == 0 || strcmp(direction, "down") == 0) {
-//         force.x = 0;
-//     }
-//     else if (strcmp(direction, "left") == 0 || strcmp(direction, "right") == 0) {
-//         force.y = 0;
-//     }
-    
-
-//     return force;
-// }
-
 
 
 Force obstacle_force(Drone *drone, Obstacles obstacles, FILE* file) {
@@ -266,10 +239,15 @@ int main(int argc, char *argv[]) {
 
     Drone drone = {10.0, 20.0, {10.0, 20.0}, {10.0, 20.0}};
     Drone_bb drone_bb;
+
     Force force_d = {0, 0};
     Force force_o = {0, 0};
     Force force_t = {0, 0};
     Force force;
+
+    Speed speedPrev = {0, 0};
+    Speed speed = {0, 0};
+
     Targets targets;
     Obstacles obstacles;
 
@@ -288,12 +266,12 @@ int main(int argc, char *argv[]) {
     int bytesRead;
 
     drone_bb = DroneToDrone_bb(&drone);
-    
+
     if (drone_bb.x < 10 && drone_bb.y < 10) snprintf(drone_str, sizeof(drone_str), "0%d;0%d", drone_bb.x, drone_bb.y);
     else if (drone_bb.x < 10) snprintf(drone_str, sizeof(drone_str), "0%d;%d", drone_bb.x, drone_bb.y);
     else if (drone_bb.y < 10) snprintf(drone_str, sizeof(drone_str), "%d;0%d", drone_bb.x, drone_bb.y);
     else snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
-
+    
     if (write(fds[askwr], drone_str, sizeof(drone_str)) == -1) {
         perror("[DRONE] Error sending drone position");
         exit(EXIT_FAILURE);
@@ -346,7 +324,7 @@ int main(int argc, char *argv[]) {
 
             // fprintf(file, "[M] Updating drone position\n");
             // fflush(file);
-            drone = updatePosition(&drone, directions, force);
+            updatePosition(&drone, force, DRONEMASS, &speed,&speedPrev, file);
             drone_bb = DroneToDrone_bb(&drone);
             
 
@@ -377,7 +355,7 @@ int main(int argc, char *argv[]) {
             force_d = drone_force(&drone, DRONEMASS, K, directions);
             force = total_force(force_d, force_o, force_t, file);
 
-            drone = updatePosition(&drone, directions, force);
+            updatePosition(&drone, force, DRONEMASS, &speed,&speedPrev, file);
             drone_bb = DroneToDrone_bb(&drone);
             
 
@@ -399,7 +377,7 @@ int main(int argc, char *argv[]) {
             force_d = drone_force(&drone, DRONEMASS, K, directions);
             force = total_force(force_d, force_o, force_t, file);
 
-            drone = updatePosition(&drone, directions, force);
+            updatePosition(&drone, force, DRONEMASS, &speed,&speedPrev, file);
             drone_bb = DroneToDrone_bb(&drone);
             
             if (drone_bb.x < 10 && drone_bb.y < 10) snprintf(drone_str, sizeof(drone_str), "0%d;0%d", drone_bb.x, drone_bb.y);

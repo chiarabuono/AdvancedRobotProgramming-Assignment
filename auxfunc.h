@@ -9,8 +9,8 @@
 #define TARGET 3 
 #define BLACKBOARD 4
 
-#define WINDOW_WIDTH 100
-#define WINDOW_LENGTH 100
+#define WINDOW_WIDTH 99
+#define WINDOW_LENGTH 99
 
 #define MAX_TARGET 5
 #define MAX_OBSTACLES 10
@@ -53,6 +53,11 @@ typedef struct
     int y[MAX_OBSTACLES];
 } Obstacles;
 
+typedef struct {
+    float x;
+    float y;
+} Speed;
+
 int writeSecure(char* filename, char* data, int numeroRiga, char mode);
 int readSecure(char* filename, char* data, int numeroRiga);
 void handler(int id, int sleep);
@@ -66,5 +71,6 @@ void fromStringtoPositionsWithTwoTargets(int *x1, int *y1, int *x2, int *y2, con
 
 void fromPositiontoString(int *x, int *y, int len, char *str, size_t str_size, FILE *file);
 void concatenateStr(const char *str1, const char *str2, char *output, size_t output_size, FILE *file);
-
+void droneInfotoString(Drone_bb *drone, Force *force, Speed *speed, char *output, size_t output_size, FILE *file);
+void fromStringtoDroneInfo(char *input_str, char *drone_str);
 #endif
