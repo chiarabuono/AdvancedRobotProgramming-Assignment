@@ -38,12 +38,15 @@ char ack [2] = "A\0";
 int fds[4][4] = {0};
 
 WINDOW * win;
+WINDOW * map;
 
 Drone_bb drone;
 Targets targets;
 Obstacles obstacles;
 
 FILE *conffile;
+
+Config config;
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
@@ -58,16 +61,24 @@ char send_dronetarget_str[len_str_targets + 10];
 char temp[len_str_targets + 2];
 char send_targetobs_str[len_str_obstacles + len_str_targets + 2];
 
+
+int score  = 0;
+int time = 10;
+int level = 0;
+char name[20];
+char diff[10];
+
 void resizeHandler(int sig){
     getmaxyx(stdscr, nh, nw);  /* get the new screen size */
-    scaleh = ((float)nh / (float)WINDOW_LENGTH);
+    scaleh = ((float)(nh - 2) / (float)WINDOW_LENGTH);
     scalew = (float)nw / (float)WINDOW_WIDTH;
     endwin();
     initscr();
     start_color();
     curs_set(0);
     noecho();
-    win = newwin(nh, nw, 2, 0); 
+    win = newwin(nh, nw, 0, 0);
+    map = newwin(nh - 2, nw, 2, 0); 
 }
 
 void mapInit(FILE *file){
@@ -217,6 +228,48 @@ void drawTarget(WINDOW * win) {
     wattroff(win, A_BOLD); // Disattiva il grassetto
 }
 
+void drawMenu(WINDOW* win) {
+
+    attron(A_BOLD); // Attiva il grassetto
+
+    // Preparazione delle stringhe
+    char score_str[10], diff_str[10], time_str[10], level_str[10];
+    sprintf(score_str, "%d", score);
+    sprintf(diff_str, "%s", diff);
+    sprintf(time_str, "%d", time);
+    sprintf(level_str, "%d", level);
+
+    // Array con le etichette e i valori corrispondenti
+    const char* labels[] = { "Score: ", "Player: ", "Difficulty: ", "Time: ", "Level: " };
+    const char* values[] = { score_str, name, diff_str, time_str, level_str };
+
+    int num_elements = 5; // Numero di elementi nel menu
+
+    // Calcola la lunghezza totale occupata dalle stringhe
+    int total_length = 0;
+    for (int i = 0; i < num_elements; i++) {
+        total_length += strlen(labels[i]) + strlen(values[i]);
+    }
+
+    // Calcola lo spazio rimanente e lo spazio tra gli elementi
+    int remaining_space = nw - total_length; // Spazio non occupato dalle stringhe
+    int spacing = remaining_space / (num_elements + 1); // Spaziatura uniforme
+
+    // Stampa gli elementi equidistanti
+    int current_position = spacing; // Posizione iniziale
+    for (int i = 0; i < num_elements; i++) {
+        // Stampa l'etichetta e il valore
+        mvwprintw(win, 0, current_position, "%s%s", labels[i], values[i]);
+
+        // Aggiorna la posizione corrente
+        current_position += strlen(labels[i]) + strlen(values[i]) + spacing;
+    }
+    attroff(A_BOLD); // Disattiva il grassetto
+    // Aggiorna la finestra per mostrare i cambiamenti
+    wrefresh(win);
+}
+
+
 int randomSelect(int n) {
     unsigned int random_number;
     int random_fd = open("/dev/urandom", O_RDONLY);
@@ -314,8 +367,9 @@ int main(int argc, char *argv[]) {
     noecho();
     cbreak();
     getmaxyx(stdscr, nh, nw);
-    win = newwin(nh, nw, 2, 0); 
-    scaleh = (float)nh / (float)WINDOW_LENGTH;
+    win = newwin(nh, nw, 0, 0);
+    map = newwin(nh - 2, nw, 2, 0); 
+    scaleh = (float)(nh - 2) / (float)WINDOW_LENGTH;
     scalew = (float)nw / (float)WINDOW_WIDTH;
 
 
@@ -331,7 +385,6 @@ int main(int argc, char *argv[]) {
     mapInit(file);
     sleep(1);
 
-    char nome [100] = "mattia e chiara";
     conffile = fopen("appsettings.json", "r");
 
     if (conffile == NULL) {
@@ -357,10 +410,14 @@ int main(int argc, char *argv[]) {
     strcpy(gameConfig->playerName, cJSON_GetObjectItemCaseSensitive(json, "PlayerName")->valuestring);
     gameConfig->startingLevel = cJSON_GetObjectItemCaseSensitive(json, "StartingLevel")->valueint;
     
-    fprintf(file, "Player name: %s\n", gameConfig->playerName);
-    fprintf(file, "Difficulty: %s\n", gameConfig->difficulty);
-    fprintf(file, "Starting level: %d\n", gameConfig->startingLevel);
-    fflush(file);
+    // fprintf(file, "Player name: %s\n", gameConfig->playerName);
+    // fprintf(file, "Difficulty: %s\n", gameConfig->difficulty);
+    // fprintf(file, "Starting level: %d\n", gameConfig->startingLevel);
+    // fflush(file);
+
+    level = gameConfig->startingLevel;
+    strcpy(name, gameConfig->playerName);
+    strcpy(diff, gameConfig->difficulty);
 
     cJSON_Delete(json);//clean
     
@@ -370,13 +427,16 @@ int main(int argc, char *argv[]) {
 
         // Update the main window
         werase(win);
-        box(win, 0, 0);
-        drawDrone(win);
-        
-        drawObstacle(win);
-        drawTarget(win);
+        werase(map);
+        box(map, 0, 0);
+
+        drawMenu(win);
+        drawDrone(map);
+        drawObstacle(map);
+        drawTarget(map);
         wrefresh(win);
-        
+        wrefresh(map);
+
         //FDs setting for select
         FD_ZERO(&readfds);
         FD_SET(fds[DRONE][askrd], &readfds);
