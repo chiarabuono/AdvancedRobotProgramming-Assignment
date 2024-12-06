@@ -14,16 +14,36 @@
 
 #define PROCESSTOCONTROL 5
 
-int pid[PROCESSTOCONTROL] = {0};  // Initialize PIDs to 0
+int pids[PROCESSTOCONTROL] = {0};  // Initialize PIDs to 0
 
 struct timeval start, end;
 long elapsed_ms;
 
+FILE *file;
+
+void sig_handler(int signo) {
+    if(signo == SIGTERM){
+        fprintf(file, "Watchdog is quitting\n");
+        fflush(file);   
+        fclose(file);
+        exit(EXIT_SUCCESS);
+    }
+}
+
 int main(int argc, char *argv[]) {
     // Open the output file for writing
-    FILE *file = fopen("outputWD.txt", "w");
+    file = fopen("outputWD.txt", "w");
     if (file == NULL) {
         perror("Error opening the file");
+        exit(1);
+    }
+
+    int pid = (int)getpid();
+    char dataWrite [80] ;
+    snprintf(dataWrite, sizeof(dataWrite), "w%d,", pid);
+
+    if(writeSecure("log.txt", dataWrite,1,'a') == -1){
+        perror("Error in writing in log.txt");
         exit(1);
     }
 
@@ -43,39 +63,45 @@ int main(int argc, char *argv[]) {
         int number = atoi(token + 1);  // Convert the number part to int
 
         if (type == 'i') {
-            pid[INPUT] = number;
+            pids[INPUT] = number;
         } else if (type == 'd') {
-            pid[DRONE] = number;
+            pids[DRONE] = number;
         } else if (type == 'o') {
-            pid[OBSTACLE] = number;
+            pids[OBSTACLE] = number;
         } else if (type == 't') {
-            pid[TARGET] = number;
+            pids[TARGET] = number;
         } else if (type == 'b') {
-            pid[BLACKBOARD] = number;
+            pids[BLACKBOARD] = number;
+        }else{
+            ;
         }
 
         token = strtok(NULL, ",");
     }
 
+    fprintf(file, "\n\n\n\n\n\n\n");
     // Write the PID values to the output file
     for (int i = 0; i < PROCESSTOCONTROL; i++) {
-        fprintf(file, "pid[%d] = %d\n", i, pid[i]);
+        fprintf(file, "pid[%d] = %d\n", i, pids[i]);
+        fflush(file);
     }
+
+    signal(SIGTERM, sig_handler);
 
     // Optional infinite loop (for debugging)
     while (1) {
         sleep(10);
         for (int i = 0; i < PROCESSTOCONTROL; i++) {
-            if (pid[i] != 0) {
+            if (pids[i] != 0) {
                 if(writeSecure("log.txt", "e", i + 2, 'o') == -1){
                     perror("Error writing the log file");
                     fclose(file);
                     exit(1);
                 }
                 gettimeofday(&start, NULL); // Tempo iniziale
-                if (kill(pid[i], SIGUSR1) == -1) {
-                    printf("Process %d is not responding or has terminated\n", pid[i]);
-                    pid[i] = 0; // Imposta il PID a 0 per ignorare in futuro
+                if (kill(pids[i], SIGUSR1) == -1) {
+                    printf("Process %d is not responding or has terminated\n", pids[i]);
+                    pids[i] = 0; // Imposta il PID a 0 per ignorare in futuro
                 } else {
                     if(readSecure("log.txt", datareaded, i + 2) == -1){
                         perror("Error reading the log file");
@@ -121,7 +147,7 @@ int main(int argc, char *argv[]) {
                             exit(1);
                         }  
                     } else{
-                        printf("Process %d is not responding or has terminated\n", pid[i]);
+                        printf("Process %d is not responding or has terminated\n", pids[i]);
                     }                    
                 }
             }

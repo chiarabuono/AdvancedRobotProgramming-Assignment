@@ -132,6 +132,11 @@ void refreshMap(){
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
         handler(TARGET,100);
+    }else if(signo == SIGTERM){
+        fprintf(file, "Target is quitting\n");
+        fflush(file);   
+        fclose(file);
+        exit(EXIT_SUCCESS);
     }
 }
 
@@ -184,6 +189,7 @@ int main(int argc, char *argv[]) {
 
     signal(SIGUSR1, sig_handler);
     signal(SIGUSR2, newMap);
+    signal(SIGTERM,sig_handler);
     
     for( int i = 0; i < MAX_TARGET; i++){
         targets.x[i] = 0;

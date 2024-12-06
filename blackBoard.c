@@ -13,6 +13,7 @@
 #include <errno.h>
 #include "auxfunc.h"
 #include <signal.h>
+#include <cjson/cJSON.h>
 
 // process to whom that asked or received
 #define askwr 1
@@ -37,8 +38,11 @@ int pid;
 char ack [2] = "A\0";
 
 int fds[4][4] = {0};
+int mode = PLAY;
 
 WINDOW * win;
+WINDOW * map;
+
 FILE *file;
 
 Drone_bb drone;
@@ -46,7 +50,11 @@ Targets targets;
 Obstacles obstacles;
 Drone_bb prevDrone = {0, 0};
 
-int pidTarget;
+FILE *conffile;
+
+Config config;
+
+int pids[6] = {0};  // Initialize PIDs to 0
 
 int mask[MAX_TARGET] = {0};
 int collsion = 0;
@@ -58,6 +66,12 @@ char obstacles_str[len_str_obstacles];
 char send_dronetarget_str[len_str_targets + 10];
 char temp[len_str_targets + 2];
 char send_targetobs_str[len_str_obstacles + len_str_targets + 2];
+
+int score  = 0;
+int time = 10;
+int level = 0;
+char name[20];
+char diff[10];
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
@@ -74,15 +88,16 @@ void storePreviousPosition(Drone_bb *drone) {
 
 void resizeHandler(int sig){
     getmaxyx(stdscr, nh, nw);  /* get the new screen size */
-    scaleh = ((float)nh / (float)WINDOW_LENGTH)*SCALERATIO;
+    scaleh = ((float)(nh - 2) / (float)WINDOW_LENGTH);
     scalew = (float)nw / (float)WINDOW_WIDTH;
     endwin();
     initscr();
     start_color();
     curs_set(0);
     noecho();
-    win = newwin(nh, nw, 0, 0); 
-    }
+    win = newwin(nh, nw, 0, 0);
+    map = newwin(nh - 2, nw, 2, 0); 
+}
 
 void mapInit(FILE *file){
 
@@ -231,6 +246,47 @@ void drawTarget(WINDOW * win) {
     } 
     wattroff(win, COLOR_PAIR(3)); 
     wattroff(win, A_BOLD); // Disattiva il grassetto
+}
+
+void drawMenu(WINDOW* win) {
+
+    wattron(win, A_BOLD); // Attiva il grassetto
+
+    // Preparazione delle stringhe
+    char score_str[10], diff_str[10], time_str[10], level_str[10];
+    sprintf(score_str, "%d", score);
+    sprintf(diff_str, "%s", diff);
+    sprintf(time_str, "%d", time);
+    sprintf(level_str, "%d", level);
+
+    // Array con le etichette e i valori corrispondenti
+    const char* labels[] = { "Score: ", "Player: ", "Difficulty: ", "Time: ", "Level: " };
+    const char* values[] = { score_str, name, diff_str, time_str, level_str };
+
+    int num_elements = 5; // Numero di elementi nel menu
+
+    // Calcola la lunghezza totale occupata dalle stringhe
+    int total_length = 0;
+    for (int i = 0; i < num_elements; i++) {
+        total_length += strlen(labels[i]) + strlen(values[i]);
+    }
+
+    // Calcola lo spazio rimanente e lo spazio tra gli elementi
+    int remaining_space = nw - total_length; // Spazio non occupato dalle stringhe
+    int spacing = remaining_space / (num_elements + 1); // Spaziatura uniforme
+
+    // Stampa gli elementi equidistanti
+    int current_position = spacing; // Posizione iniziale
+    for (int i = 0; i < num_elements; i++) {
+        // Stampa l'etichetta e il valore
+        mvwprintw(win, 0, current_position, "%s%s", labels[i], values[i]);
+
+        // Aggiorna la posizione corrente
+        current_position += strlen(labels[i]) + strlen(values[i]) + spacing;
+    }
+    wattroff(win, A_BOLD); // Disattiva il grassetto
+    // Aggiorna la finestra per mostrare i cambiamenti
+    wrefresh(win);
 }
 
 int randomSelect(int n) {
@@ -383,6 +439,48 @@ void createNewMap(){
     }
 }
 
+void readConf(){
+
+    conffile = fopen("appsettings.json", "r");
+
+    if (conffile == NULL) {
+        perror("Error opening the file");
+        //return EXIT_FAILURE;//1
+    }
+
+    int len = fread(jsonBuffer, 1, sizeof(jsonBuffer), conffile); 
+
+    fclose(conffile);
+
+    cJSON *json = cJSON_Parse(jsonBuffer);// parse the text to json object
+
+    if (json == NULL)
+    {
+        perror("Error parsing the file");
+        //return EXIT_FAILURE;
+    }
+
+    conf_ptr gameConfig = malloc(sizeof(conf_ptr)); // allocate memory dinamically
+    
+    strcpy(gameConfig->difficulty, cJSON_GetObjectItemCaseSensitive(json, "Difficulty")->valuestring);
+    strcpy(gameConfig->playerName, cJSON_GetObjectItemCaseSensitive(json, "PlayerName")->valuestring);
+    gameConfig->startingLevel = cJSON_GetObjectItemCaseSensitive(json, "StartingLevel")->valueint;
+    
+    // fprintf(file, "Player name: %s\n", gameConfig->playerName);
+    // fprintf(file, "Difficulty: %s\n", gameConfig->difficulty);
+    // fprintf(file, "Starting level: %d\n", gameConfig->startingLevel);
+    // fflush(file);
+
+    level = gameConfig->startingLevel;
+    strcpy(name, gameConfig->playerName);
+    strcpy(diff, gameConfig->difficulty);
+
+    cJSON_Delete(json);//clean
+    
+    free(gameConfig);//malloc --> clean //delete the memory dinamically allocated
+
+}
+
 int main(int argc, char *argv[]) {
 
     // Log file opening
@@ -460,8 +558,9 @@ int main(int argc, char *argv[]) {
     noecho();
     cbreak();
     getmaxyx(stdscr, nh, nw);
-    win = newwin(nh, nw, 5, 5); 
-    scaleh = (float)nh / (float)WINDOW_LENGTH;
+    win = newwin(nh, nw, 0, 0);
+    map = newwin(nh - 2, nw, 2, 0); 
+    scaleh = (float)(nh - 2) / (float)WINDOW_LENGTH;
     scalew = (float)nw / (float)WINDOW_WIDTH;
 
     // Definizione delle coppie di colori
@@ -476,31 +575,46 @@ int main(int argc, char *argv[]) {
     mapInit(file);
 
     char datareaded[200];
-    if (readSecure("log.txt", datareaded, 1) == -1) {
+    if (readSecure("log.txt", datareaded,1) == -1) {
         perror("Error reading the log file");
         exit(1);
     }
 
+    usleep(500000);
+
+    // Parse the data and assign roles
     char *token = strtok(datareaded, ",");
-    int number = -1;  // Inizializza il numero a un valore di default per gestire errori
-
     while (token != NULL) {
-        if (token[0] == 't') {
-            number = atoi(token + 1);  // Convert the number part to int
-            break;  // Esci dal ciclo, dato che hai trovato 't'
+        char type = token[0];          // Get the prefix
+        int number = atoi(token + 1);  // Convert the number part to int
+
+        if (type == 'i') {
+            pids[INPUT] = number;
+        } else if (type == 'd') {
+            pids[DRONE] = number;
+        } else if (type == 'o') {
+            pids[OBSTACLE] = number;
+        } else if (type == 't') {
+            pids[TARGET] = number;
+        } else if (type == 'b') {
+            pids[BLACKBOARD] = number;
+        }else if (type == 'w') {
+            pids[WATCHDOG] = number;
         }
-        token = strtok(NULL, ",");  // Passa al prossimo token
+        token = strtok(NULL, ",");
     }
 
-    if (number == -1) {
-        fprintf(stderr, "Error: 't' prefix not found in data\n");
-        exit(1);  // Esci se non trovi un valore valido
+     // Write the PID values to the output file
+    for (int i = 0; i < 6; i++) {
+        fprintf(file, "pid[%d] = %d\n", i, pids[i]);
+        fflush(file);
     }
 
-    pidTarget = number;
+    readConf();
 
     while (1) {
-        
+        fprintf(file, "Mode: PLAY\n");
+        fflush(file);
         if (targetsHit >= numTarget) {
             fprintf(file, "All targets reached\n");
             fflush(file);
@@ -509,18 +623,21 @@ int main(int argc, char *argv[]) {
             for (int i = 0; i < MAX_TARGET; i++) {
                 mask[i] = 0;
             }
-            kill(pidTarget, SIGUSR2);
+            kill(pids[TARGET], SIGUSR2);
             createNewMap();
         }
 
         // Update the main window
         werase(win);
-        box(win, 0, 0);
-        drawDrone(win);
-        
-        drawObstacle(win);
-        drawTarget(win);
+        werase(map);
+        box(map, 0, 0);
+
+        drawMenu(win);
+        drawDrone(map);
+        drawObstacle(map);
+        drawTarget(map);
         wrefresh(win);
+        wrefresh(map);
         
         //FDs setting for select
         FD_ZERO(&readfds);
@@ -650,6 +767,48 @@ int main(int argc, char *argv[]) {
                 fprintf(file, "Received: %s\n", inp);
                 fflush(file);
 
+                if(inp[2] == 'P'){
+                    fprintf(file, "Pause\n");
+                    fflush(file);
+                    mode = PAUSE;
+                    if (write(fds[INPUT][recwr], ack, strlen(ack) + 1) == -1){
+                    fprintf(file, "Error sending ack\n");
+                    fflush(file);
+                    }
+                    fprintf(file, "Sended ack\n");
+                    fflush(file);
+
+                    char pause[12];
+                    for(int i = 0; i < 12; i++){
+                        pause[i] = '\0';
+                    }  
+                    while(pause[2] != 'P'){
+                        fprintf(file, "Waiting for play\n");
+                        fflush(file);
+                        if (read(fds[INPUT][askrd], pause, 12) == -1){
+                        fprintf(file, "Error reading input\n");
+                        fflush(file);
+                        exit(EXIT_FAILURE);
+                        }
+                    }
+                    fprintf(file, "Play\n");
+                    fflush(file);
+                    continue;
+
+                }else if (inp[2] == 'q'){
+                    for(int i = 0; i < 6; i++){
+                        if (i != BLACKBOARD){ 
+                            kill(pids[i], SIGTERM);
+                            fprintf(file, "Killed process %d\n", pids[i]);
+                            fflush(file);
+                        }
+                    }
+                    fprintf(file, "terminating blackboard\n");
+                    fflush(file);
+                    fclose(file);
+                    exit(EXIT_SUCCESS);
+                }
+
                 char rec[2];
                 if(read(fds[DRONE][askrd], &rec, 2) == -1){
                     fprintf(file, "Error reading input\n");
@@ -691,7 +850,6 @@ int main(int argc, char *argv[]) {
                 fflush(file);
 
                 createNewMap();
-                //if pObst == 1 || pTarget == 1
                     //send drone position to target
                     //read the target
                     //send drone position and target to obstacle

@@ -8,6 +8,7 @@
 #define OBSTACLE 2        
 #define TARGET 3 
 #define BLACKBOARD 4
+#define WATCHDOG 5
 
 #define WINDOW_WIDTH 100
 #define WINDOW_LENGTH 100
@@ -24,6 +25,12 @@
 
 #define len_str_targets 6 * MAX_TARGET + 2
 #define len_str_obstacles 6 * MAX_OBSTACLES + 2
+
+#define MAX_LINE_LENGTH 100
+#define MAX_FILE_SIZE 1024
+
+#define PLAY 0
+#define PAUSE 1
 
 extern const char *moves[9];
 
@@ -52,6 +59,23 @@ typedef struct
     int x[MAX_OBSTACLES];
     int y[MAX_OBSTACLES];
 } Obstacles;
+
+typedef struct
+{
+    char playerName[100];
+    char difficulty[100];
+    int startingLevel;
+    int defbtn[9];
+} Config;
+
+typedef struct {
+    char name[50];
+    int score;
+    int level;
+} Player;
+
+typedef Config *conf_ptr;
+extern char jsonBuffer[MAX_FILE_SIZE];
 
 int writeSecure(char* filename, char* data, int numeroRiga, char mode);
 int readSecure(char* filename, char* data, int numeroRiga);

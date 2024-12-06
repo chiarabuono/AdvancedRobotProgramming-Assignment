@@ -22,10 +22,17 @@
 
 int pid;
 
+FILE *file;
+
 void sig_handler(int signo) {
     if (signo == SIGUSR1)
     {
         handler(OBSTACLE, 100);
+    }else if(signo == SIGTERM){
+        fprintf(file, "Obstacle is quitting\n");
+        fflush(file);   
+        fclose(file);
+        exit(EXIT_SUCCESS);
     }
 }
 
@@ -121,7 +128,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Opening log file
-    FILE *file = fopen("outputobstacle.txt", "a");
+    file = fopen("outputobstacle.txt", "a");
     if (file == NULL) {
         perror("Errore nell'apertura del file");
         exit(1);
@@ -155,6 +162,7 @@ int main(int argc, char *argv[]) {
     close(fds[recwr]);
 
     signal(SIGUSR1, sig_handler);
+    signal(SIGTERM, sig_handler);
 
     Drone_bb drone;
     Targets targets;
@@ -178,6 +186,14 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
 
+        if(dronetarget_str[0] == 'q') {
+            fprintf(file, "Obstacle is quitting\n");
+            fflush(file);
+            // Close file
+            fclose(file);
+            return 0;
+        }
+
         fprintf(file, "Reading drone and target position: %s\n", dronetarget_str);
         fflush(file);
 
@@ -196,8 +212,4 @@ int main(int argc, char *argv[]) {
         usleep(100000);
         // obstaclesMoving(obstacles);
     }
-
-    // Close file
-    fclose(file);
-    return 0;
 }

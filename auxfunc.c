@@ -7,10 +7,11 @@
 #include <stdlib.h>
 #include "auxfunc.h"
 
-const char *moves[] = {"upleft", "up", "upright", "left", "center", "right", "downleft", "down", "downright"};
-
 int numTarget = 5;
 int numObstacle = 10;
+
+const char *moves[] = {"upleft", "up", "upright", "left", "center", "right", "downleft", "down", "downright"};
+char jsonBuffer[MAX_FILE_SIZE];
 
 int writeSecure(char* filename, char* data, int numeroRiga, char mode) {
     if (mode != 'o' && mode != 'a') {

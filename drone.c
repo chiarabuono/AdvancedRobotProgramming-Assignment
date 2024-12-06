@@ -26,6 +26,8 @@ float K = 1.0;
 
 int pid;
 
+FILE *file;
+
 typedef struct
 {
     float x;
@@ -215,6 +217,11 @@ Force total_force(Force drone, Force obstacle, Force target, FILE* file){
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
         handler(DRONE, 100);
+    }else if(signo == SIGTERM){
+        fprintf(file, "Drone is quitting\n");
+        fflush(file);   
+        fclose(file);
+        exit(EXIT_SUCCESS);
     }
 }
 
@@ -225,7 +232,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Opening log file
-    FILE *file = fopen("outputdrone.txt", "a");
+    file = fopen("outputdrone.txt", "a");
     if (file == NULL) {
         perror("Errore nell'apertura del file");
         exit(1);
@@ -260,7 +267,8 @@ int main(int argc, char *argv[]) {
     close(fds[recwr]);
 
     signal(SIGUSR1, sig_handler);
-
+    signal(SIGTERM, sig_handler);
+    
     // Simulate user input
     char directions[MAX_DIRECTIONS] = {0};
 
@@ -327,6 +335,7 @@ int main(int argc, char *argv[]) {
         }
         fprintf(file, "(%d, %d)\n", (int)drone.x, (int)drone.y);
         fflush(file);
+
         switch (data[0]) {
         
         case 'M':
@@ -421,8 +430,4 @@ int main(int argc, char *argv[]) {
 
         usleep(1000000 / PERIOD);
     }
-
-    // Chiudiamo il file
-    fclose(file);
-    return 0;
 }
