@@ -53,6 +53,7 @@ int collsion = 0;
 int targetsHit = 0;
 
 char drone_str[6];
+char droneInfo_str[36];
 char target_str[len_str_targets];
 char obstacles_str[len_str_obstacles];
 char send_dronetarget_str[len_str_targets + 10];
@@ -86,21 +87,24 @@ void resizeHandler(int sig){
 
 void mapInit(FILE *file){
 
-   
-    // receiving drone position
-    // fprintf(file, "Sending new map to [DRONE]: %s\n", send_targetobs_str);
-    // fflush(file);
-
-    if (read(fds[DRONE][askrd], &drone_str, sizeof(drone_str)) == -1){
+    // receiving drone info
+    if (read(fds[DRONE][askrd], &droneInfo_str, sizeof(droneInfo_str)) == -1){
         fprintf(file,"[BB] Error reading drone position\n");
         fflush(file);
         exit(EXIT_FAILURE);
     }
-
-    fprintf(file, "Drone position: %s\n", drone_str);
+    fprintf(file, "[init] Drone info: %s -> ", droneInfo_str);
     fflush(file);
+
+    fromStringtoDroneInfo(droneInfo_str, drone_str, file);
+    fprintf(file, "Drone position: %s -> ", drone_str);
+    fflush(file);
+
     fromStringtoDrone(&drone, drone_str, file);
     storePreviousPosition(&drone);
+
+    fprintf(file, "(%d, %d)\n", drone.x, drone.y);
+    fflush(file);
 
 
     // send drone position to target
@@ -131,8 +135,8 @@ void mapInit(FILE *file){
 
     // send drone and target position to obstacle
 
-    // fprintf(file, "Sending drone and target position to [OB]: %s\n", send_dronetarget_str);
-    // fflush(file);
+    fprintf(file, "[map-init]Sending drone and target position to [OB]: %s\n", send_dronetarget_str);
+    fflush(file);
     if (write(fds[OBSTACLE][recwr], &send_dronetarget_str, sizeof(send_dronetarget_str)) == -1) {
         fprintf(file,"[BB] Error sending drone and target position to [OBSTACLE]\n");
         fflush(file);
@@ -158,8 +162,8 @@ void mapInit(FILE *file){
     concatenateStr("M", target_str, temp, sizeof(temp), file);
     concatenateStr(temp, obstacles_str, send_targetobs_str, sizeof(send_targetobs_str), file);
 
-    // fprintf(file, "Sending new map to [DRONE]: %s\n", send_targetobs_str);
-    // fflush(file);
+    fprintf(file, "Sending new map to [DRONE]: %s\n", send_targetobs_str);
+    fflush(file);
 
     if (write(fds[DRONE][recwr], &send_targetobs_str, sizeof(send_targetobs_str)) == -1) {
         fprintf(file, "[BB] Error sending updated map\n");
@@ -173,24 +177,17 @@ void mapInit(FILE *file){
     strcat(targetObstacle, obstacles_str);
     fromStringtoPositionsWithTwoTargets(targets.x, targets.y, obstacles.x,obstacles.y,targetObstacle, file);
 
-    fprintf(file, "New obstacles:%s\n", targetObstacle);
-    fprintf(file, "New obstacle:\n");
-    for(int i = 0; i < numObstacle; i++){
-        fprintf(file, "x: %d, y: %d\n", obstacles.x[i], obstacles.y[i]);
-    }
-    fprintf(file, "New targets:\n");
-    for(int i = 0; i < numTarget; i++){
-        fprintf(file, "x: %d, y: %d\n", targets.x[i], targets.y[i]);
-    }
-    fflush(file);
-    // fprintf(file, "Reading drone position from [DRONE]\n");
+    // fprintf(file, "New obstacles:%s\n", targetObstacle);
+    // fprintf(file, "New obstacle:\n");
+    // for(int i = 0; i < numObstacle; i++){
+    //     fprintf(file, "x: %d, y: %d\n", obstacles.x[i], obstacles.y[i]);
+    // }
+    // fprintf(file, "New targets:\n");
+    // for(int i = 0; i < numTarget; i++){
+    //     fprintf(file, "x: %d, y: %d\n", targets.x[i], targets.y[i]);
+    // }
     // fflush(file);
 
-    // if (read(fds[DRONE][askrd], &drone_str, sizeof(drone_str)) == -1){
-    //     fprintf(file,"[BB] Error reading drone position\n");
-    //     fflush(file);
-    //     exit(EXIT_FAILURE);
-    // }
     // // fprintf(file, "Drone position: %s\n", drone_str);
     // // fflush(file);
     fromStringtoDrone(&drone, drone_str, file);
@@ -282,11 +279,11 @@ void detectCollision(Drone_bb* drone, Drone_bb * prev, Targets* targets, FILE* f
 void createNewMap(){
     char rec[2];
         read(fds[TARGET][askrd], &rec, 2);
-        fprintf(file, "Received: %s\n", rec);
+        fprintf(file, "[createNewMap - T] Received: %s\n", rec);
         fflush(file);
         if(rec[0] == 'R'){
 
-            fprintf(file, "Sending drone position to [TARGET] %s\n", drone_str);
+            fprintf(file, "[new map] Sending drone position to [TARGET] %s\n", drone_str);
             fflush(file);
 
             if (write(fds[TARGET][recwr], drone_str, strlen(drone_str)) == -1) {
@@ -335,17 +332,16 @@ void createNewMap(){
             strcat(targetObstacle, obstacles_str);
             fromStringtoPositionsWithTwoTargets(targets.x, targets.y, obstacles.x,obstacles.y,targetObstacle, file);
 
-            fprintf(file, "New obstacles:%s\n", targetObstacle);
-
-            fprintf(file, "New obstacle:\n");
-            for(int i = 0; i < MAX_OBSTACLES; i++){
-                fprintf(file, "x: %d y: %d\n", obstacles.x[i], obstacles.y[i]);
-            }
-            fprintf(file, "New targets:\n");
-            for(int i = 0; i < MAX_TARGET; i++){
-                fprintf(file, "x: %d y: %d\n", targets.x[i], targets.y[i]);
-            }
-            fflush(file);
+            // fprintf(file, "New obstacles:%s\n", targetObstacle);
+            // fprintf(file, "New obstacle:\n");
+            // for(int i = 0; i < MAX_OBSTACLES; i++){
+            //     fprintf(file, "x: %d y: %d\n", obstacles.x[i], obstacles.y[i]);
+            // }
+            // fprintf(file, "New targets:\n");
+            // for(int i = 0; i < MAX_TARGET; i++){
+            //     fprintf(file, "x: %d y: %d\n", targets.x[i], targets.y[i]);
+            // }
+            // fflush(file);
 
             char newMap [100];
             newMap[0] = 'M';
@@ -354,9 +350,11 @@ void createNewMap(){
             fflush(file);
 
             char rec[2];
+
         read(fds[DRONE][askrd], &rec, 2);
-        fprintf(file, "Received: %s\n", rec);
+        fprintf(file, "[create new map - D] Received: %s\n", rec);
         fflush(file);
+
         if(rec[0] == 'R'){
             fprintf(file, "Asking drone position to [DRONE]\n");
             fflush(file);
@@ -365,19 +363,20 @@ void createNewMap(){
                 fflush(file);
                 exit(EXIT_FAILURE);
             }
-            if (read(fds[DRONE][askrd], &drone_str, sizeof(drone_str)) == -1){
+            if (read(fds[DRONE][askrd], &droneInfo_str, sizeof(droneInfo_str)) == -1){
                 fprintf(file,"[BB] Error reading drone position\n");
                 fflush(file);
                 exit(EXIT_FAILURE);
             }
             
             storePreviousPosition(&drone);
+            fromStringtoDroneInfo(droneInfo_str, drone_str, file);
             fromStringtoDrone(&drone, drone_str, file);
             
-            fprintf(file, "Drone position: %s\n", drone_str);
+            fprintf(file, "[new map] Drone position: %s ->", drone_str);
             fflush(file);
             
-            fprintf(file,"Drone position: %d,%d\n", drone.x, drone.y);
+            fprintf(file," (%d,%d)\n", drone.x, drone.y);
             fflush(file);
         }
     }
@@ -470,8 +469,6 @@ int main(int argc, char *argv[]) {
     init_pair(3, COLOR_GREEN, COLOR_BLACK);    // Testo verde su sfondo nero
 
     char drone_str[80];
-    char forceO_str[80];
-    char forceT_str[80];
 
     mapInit(file);
 
@@ -569,8 +566,10 @@ int main(int argc, char *argv[]) {
                 
                 char rec[2];
                 read(fds[DRONE][askrd], &rec, 2);
-                fprintf(file, "Received: %s\n", rec);
+
+                fprintf(file, "[main - D] Received: %s\n", rec);
                 fflush(file);
+
                 if(rec[0] == 'R'){
                     if (collsion)
                     {
@@ -596,21 +595,19 @@ int main(int argc, char *argv[]) {
                             fflush(file);
                             exit(EXIT_FAILURE);
                         }
-                        if (read(fds[DRONE][askrd], &drone_str, sizeof(drone_str)) == -1){
+                        if (read(fds[DRONE][askrd], &droneInfo_str, sizeof(droneInfo_str)) == -1){
                             fprintf(file,"[BB] Error reading drone position\n");
                             fflush(file);
                             exit(EXIT_FAILURE);
                         }
                         storePreviousPosition(&drone);
+                        fromStringtoDroneInfo(droneInfo_str, drone_str, file);
                         fromStringtoDrone(&drone, drone_str, file);
                     
-                        fprintf(file, "Drone position: %s\n", drone_str);
+                        fprintf(file, "[D] Drone position: %s -> (%d,%d)\n", drone_str, drone.x, drone.y);
                         fflush(file);
                         
-                        fprintf(file,"Drone position: %d,%d\n", drone.x, drone.y);
-                        fflush(file);
-
-                    }else{
+                    } else{
                     
                         fprintf(file, "Asking drone position to [DRONE]\n");
                         fflush(file);
@@ -620,19 +617,18 @@ int main(int argc, char *argv[]) {
                             fflush(file);
                             exit(EXIT_FAILURE);
                         }
-                        if (read(fds[DRONE][askrd], &drone_str, sizeof(drone_str)) == -1){
+                        if (read(fds[DRONE][askrd], &droneInfo_str, sizeof(droneInfo_str)) == -1){
                             fprintf(file,"[BB] Error reading drone position\n");
                             fflush(file);
                             exit(EXIT_FAILURE);
                         }
                         storePreviousPosition(&drone);
+                        fromStringtoDroneInfo(droneInfo_str, drone_str, file);
                         fromStringtoDrone(&drone, drone_str, file);
                     
-                        fprintf(file, "Drone position: %s\n", drone_str);
+                        fprintf(file, "[D-else] Drone position: %s -> (%d,%d)\n", drone_str, drone.x, drone.y);
                         fflush(file);
                         
-                        fprintf(file,"Drone position: %d,%d\n", drone.x, drone.y);
-                        fflush(file);
                     }
                 }
                   
@@ -647,7 +643,7 @@ int main(int argc, char *argv[]) {
                     exit(EXIT_FAILURE);
                 }
                 
-                fprintf(file, "Received: %s\n", inp);
+                fprintf(file, "[main - input] Received: %s\n", inp);
                 fflush(file);
 
                 char rec[2];
@@ -676,15 +672,19 @@ int main(int argc, char *argv[]) {
                 fprintf(file, "Sended ack and reading drone position\n");
                 fflush(file);
 
-                if (read(fds[DRONE][askrd], &drone_str, strlen(drone_str)) == -1){
+                if (read(fds[DRONE][askrd], &droneInfo_str, strlen(droneInfo_str)) == -1){
                     fprintf(file,"[BB] Error reading drone position\n");
                     fflush(file);
                     exit(EXIT_FAILURE);
                 }
-                fprintf(file, "Drone position: %s\n", drone_str);
-                fflush(file);
+                
+
                 storePreviousPosition(&drone);
-                fromStringtoDrone(&drone, drone_str, file);    
+                fromStringtoDroneInfo(droneInfo_str, drone_str, file);
+                fromStringtoDrone(&drone, drone_str, file);
+
+                fprintf(file, "[input] Drone position: %s\n", drone_str);
+                fflush(file);
 
             } else if (selected == fds[OBSTACLE][askrd] || selected == fds[TARGET][askrd]){
                 fprintf(file, "selected obstacle or target\n");

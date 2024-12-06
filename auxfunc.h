@@ -72,5 +72,5 @@ void fromStringtoPositionsWithTwoTargets(int *x1, int *y1, int *x2, int *y2, con
 void fromPositiontoString(int *x, int *y, int len, char *str, size_t str_size, FILE *file);
 void concatenateStr(const char *str1, const char *str2, char *output, size_t output_size, FILE *file);
 void droneInfotoString(Drone_bb *drone, Force *force, Speed *speed, char *output, size_t output_size, FILE *file);
-void fromStringtoDroneInfo(char *input_str, char *drone_str);
+void fromStringtoDroneInfo(char *input_str, char *drone_str, FILE* file);
 #endif

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "auxfunc.h"
+#include <math.h>
 
 const char *moves[] = {"upleft", "up", "upright", "left", "center", "right", "downleft", "down", "downright"};
 
@@ -412,145 +413,46 @@ void concatenateStr(const char *str1, const char *str2, char *output, size_t out
     }
 }
 
+void droneInfotoString(Drone_bb *drone, Force *force, Speed *speed, char *output, size_t output_size, FILE *file) {
+    char drone_str[6];
 
-// QUESTA FUNZIONE CONTIENE LA POSSIBILITÀ DI FARE ERASE MA DA PROBLEMI,IL PRIMO PROCESSO CHE PROVA A SCRIVERE NON SCRIVE
+    if (drone->x < 10 && drone->y < 10) snprintf(drone_str, sizeof(drone_str), "0%d;0%d", drone->x, drone->y);
+    else if (drone->x < 10) snprintf(drone_str, sizeof(drone_str), "0%d;%d", drone->x, drone->y);
+    else if (drone->y < 10) snprintf(drone_str, sizeof(drone_str), "%d;0%d", drone->x, drone->y);
+    else snprintf(drone_str, sizeof(drone_str), "%d;%d", drone->x, drone->y);
 
-// int writeSecure(char* filename, char* data, int numeroRiga, char mode) {
-//     if (mode != 'o' && mode != 'a' && mode != 'e') {
-//         fprintf(stderr, "Modalità non valida. Usa 'o' per overwrite, 'a' per append o 'e' per erase.\n");
-//         return -1;
-//     }
+    char force_str[50];
+    snprintf(force_str, sizeof(force_str), "%.3f;%.3f", force->x, force->y);
 
-//     FILE* file = fopen(filename, "r+");  // Apertura per lettura e scrittura
-//     if (file == NULL) {
-//         perror("Errore nell'apertura del file");
-//         return -1;
-//     }
+    char speed_str[50];
+    snprintf(speed_str, sizeof(speed_str), "%.3f;%.3f", speed->x, speed->y);
 
-//     int fd = fileno(file);
-//     if (fd == -1) {
-//         perror("Errore nel recupero del file descriptor");
-//         fclose(file);
-//         return -1;
-//     }
+    char temp[50];
+    concatenateStr(drone_str, force_str, temp, sizeof(temp), file);
+    concatenateStr(temp, speed_str, output, output_size, file);
 
-//     // Blocca il file per accesso esclusivo
-//     while (flock(fd, LOCK_EX) == -1) {
-//         if (errno == EWOULDBLOCK) {
-//             usleep(100000);  // Pausa di 100 ms
-//         } else {
-//             perror("Errore nel blocco del file");
-//             fclose(file);
-//             return -1;
-//         }
-//     }
+}
 
-//     // Legge tutto il file in memoria
-//     char** righe = NULL;  // Array di righe
-//     size_t numRighe = 0;  // Numero di righe
-//     char buffer[1024];    // Buffer per leggere ogni riga
+void fromStringtoDroneInfo(char *input_str, char *drone_str, FILE *file) {
+    int semicolon_count = 0;
+    size_t i = 0;
 
-//     while (fgets(buffer, sizeof(buffer), file)) {
-//         righe = realloc(righe, (numRighe + 1) * sizeof(char*));
-//         if (!righe) {
-//             perror("Errore nella realloc");
-//             fclose(file);
-//             return -1;
-//         }
-//         righe[numRighe] = strdup(buffer);  // Duplica la riga letta
-//         numRighe++;
-//     }
+    // Scorri la stringa e cerca il secondo punto e virgola
+    for (; input_str[i] != '\0'; i++) {
+        if (input_str[i] == ';') {
+            semicolon_count++;
+            if (semicolon_count == 2) {
+                break; // Trova il secondo punto e virgola
+            }
+        }
+    }
 
-//     // Gestisci la modalità 'e' (erase)
-//     if (mode == 'e') {
-//         // Elimina la riga specificata
-//         if (numeroRiga > 0 && numeroRiga <= numRighe) {
-//             free(righe[numeroRiga - 1]);  // Libera la riga da eliminare
-//             for (size_t i = numeroRiga - 1; i < numRighe - 1; i++) {
-//                 righe[i] = righe[i + 1];  // Sposta le righe successive
-//             }
-//             numRighe--;  // Riduce il numero di righe
-//         } else {
-//             fprintf(stderr, "Errore: Riga %d non trovata per cancellazione.\n", numeroRiga);
-//             flock(fd, LOCK_UN);
-//             fclose(file);
-//             return -1;
-//         }
-//     } else if (numeroRiga > numRighe) {
-//         // Aggiungi righe vuote fino alla riga richiesta
-//         righe = realloc(righe, numeroRiga * sizeof(char*));
-//         for (size_t i = numRighe; i < numeroRiga - 1; i++) {
-//             righe[i] = strdup("\n");  // Righe vuote
-//         }
-//         righe[numeroRiga - 1] = (mode == 'o') ? strdup(data) : strdup("\n");
-//         numRighe = numeroRiga;
-//     } else {
-//         // Sovrascrivi o aggiungi in base alla modalità
-//         if (mode == 'o') {
-//             free(righe[numeroRiga - 1]);
-//             righe[numeroRiga - 1] = strdup(data);
-//         } else if (mode == 'a') {
-//             size_t len = strlen(righe[numeroRiga - 1]);
-//             if (len > 0 && righe[numeroRiga - 1][len - 1] == '\n') {
-//                 righe[numeroRiga - 1][len - 1] = '\0';
-//             }
-//             char* nuovoContenuto = malloc(len + strlen(data) + 2);
-//             if (!nuovoContenuto) {
-//                 perror("Errore nella malloc");
-//                 fclose(file);
-//                 return -1;
-//             }
-//             sprintf(nuovoContenuto, "%s%s\n", righe[numeroRiga - 1], data);
-//             free(righe[numeroRiga - 1]);
-//             righe[numeroRiga - 1] = nuovoContenuto;
-//         }
-//     }
+    // Copia la parte iniziale (fino al secondo ';') in drone_str
+    strncpy(drone_str, input_str, i);
+    drone_str[i + 1] = '\0'; // Assicura il terminatore della stringa
+    
 
-//     // Riscrive il contenuto nel file
-//     FILE* tmpFile = fopen("tempfile.txt", "w");  // Creazione del file temporaneo
-//     if (!tmpFile) {
-//         perror("Errore nella creazione del file temporaneo");
-//         flock(fd, LOCK_UN);
-//         fclose(file);
-//         return -1;
-//     }
-
-//     for (size_t i = 0; i < numRighe; i++) {
-//         fprintf(tmpFile, "%s", righe[i]);
-//         free(righe[i]);  // Libera la memoria per ogni riga
-//     }
-
-//     free(righe);  // Libera l'array di righe
-
-//     fclose(tmpFile);  // Chiudi il file temporaneo
-
-//     // Truncare il file originale
-//     if (remove(filename) != 0) {
-//         perror("Errore nell'eliminazione del file originale");
-//         flock(fd, LOCK_UN);
-//         fclose(file);
-//         return -1;
-//     }
-
-//     if (rename("tempfile.txt", filename) != 0) {
-//         perror("Errore nel rinominare il file temporaneo");
-//         flock(fd, LOCK_UN);
-//         fclose(file);
-//         return -1;
-//     }
-
-//     fflush(file);
-
-//     // Sblocca il file
-//     if (flock(fd, LOCK_UN) == -1) {
-//         perror("Errore nello sblocco del file");
-//         fclose(file);
-//         return -1;
-//     }
-
-//     fclose(file);
-//     return 0;
-// }
+}
 
 void handler(int id, int sleep) {
 
