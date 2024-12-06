@@ -69,9 +69,9 @@ void updatePosition(Drone *p, Force force, int mass, Speed *speed, Speed *speedP
     speed->x = speedX;
     speed->y = speedY;
 
-    fprintf(file, "speedPrev (%f, %f)\t Force (%f, %f)", speedX, speedY, force.x, force.y);
-    fprintf(file, "delta (%f, %f)\n", speedX * (1.0f/PERIOD), speedY * (1.0f/PERIOD));
-    fflush(file);
+    // fprintf(file, "speedPrev (%f, %f)\t Force (%f, %f)", speedX, speedY, force.x, force.y);
+    // fprintf(file, "delta (%f, %f)\n", speedX * (1.0f/PERIOD), speedY * (1.0f/PERIOD));
+    // fflush(file);
 
     p->x += 10 * speedX * (1.0f/PERIOD);
     p->y += 10* speedY * (1.0f/PERIOD);
@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
     Force force_d = {0, 0};
     Force force_o = {0, 0};
     Force force_t = {0, 0};
-    Force force;
+    Force force = {0, 0};
 
     Speed speedPrev = {0, 0};
     Speed speed = {0, 0};
@@ -263,17 +263,16 @@ int main(int argc, char *argv[]) {
 
     char data[200];
     char drone_str[6];
+    char droneInfo_str[36];
     int bytesRead;
 
     drone_bb = DroneToDrone_bb(&drone);
-
-    if (drone_bb.x < 10 && drone_bb.y < 10) snprintf(drone_str, sizeof(drone_str), "0%d;0%d", drone_bb.x, drone_bb.y);
-    else if (drone_bb.x < 10) snprintf(drone_str, sizeof(drone_str), "0%d;%d", drone_bb.x, drone_bb.y);
-    else if (drone_bb.y < 10) snprintf(drone_str, sizeof(drone_str), "%d;0%d", drone_bb.x, drone_bb.y);
-    else snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
     
-    if (write(fds[askwr], drone_str, sizeof(drone_str)) == -1) {
-        perror("[DRONE] Error sending drone position");
+    droneInfotoString(&drone_bb, &force, &speed, droneInfo_str, sizeof(droneInfo_str), file);
+    fprintf(file, "[start] Drone info %s\n", droneInfo_str);
+    fflush(file);
+    if (write(fds[askwr], droneInfo_str, sizeof(droneInfo_str)) == -1) {
+        perror("[DRONE] Error sending drone info");
         exit(EXIT_FAILURE);
     }
 
@@ -295,15 +294,15 @@ int main(int argc, char *argv[]) {
                 perror("[DRONE] Ready not sended correctly\n");
                 exit(EXIT_FAILURE);
             }
-        fprintf(file, "[DRONE] Drone ready\n");
-        fflush(file);
+        // fprintf(file, "[DRONE] Drone ready\n");
+        // fflush(file);
 
         bytesRead = read(fds[recrd], &data, sizeof(data));
         if (bytesRead == -1) {
             perror("[DRONE] Error receiving data from BB");
             exit(EXIT_FAILURE);
         }
-        fprintf(file, "(%d, %d)\n", (int)drone.x, (int)drone.y);
+        fprintf(file, "Drone position (%d, %d)\n", (int)drone.x, (int)drone.y);
         fflush(file);
         switch (data[0]) {
         
@@ -328,13 +327,11 @@ int main(int argc, char *argv[]) {
             drone_bb = DroneToDrone_bb(&drone);
             
 
-            if (drone_bb.x < 10 && drone_bb.y < 10) snprintf(drone_str, sizeof(drone_str), "0%d;0%d", drone_bb.x, drone_bb.y);
-            else if (drone_bb.x < 10) snprintf(drone_str, sizeof(drone_str), "0%d;%d", drone_bb.x, drone_bb.y);
-            else if (drone_bb.y < 10) snprintf(drone_str, sizeof(drone_str), "%d;0%d", drone_bb.x, drone_bb.y);
-            else snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
-
+            droneInfotoString(&drone_bb, &force, &speed, droneInfo_str, sizeof(droneInfo_str), file);
+            fprintf(file, "[M] Drone info %s\n", droneInfo_str);
+            fflush(file);
             // drone sends its position to BB
-            if (write(fds[askwr], drone_str, strlen(drone_str)) == -1) {
+            if (write(fds[askwr], droneInfo_str, strlen(droneInfo_str)) == -1) {
                 perror("[M] Error sending drone position");
                 exit(EXIT_FAILURE);
             }
@@ -359,13 +356,11 @@ int main(int argc, char *argv[]) {
             drone_bb = DroneToDrone_bb(&drone);
             
 
-            if (drone_bb.x < 10 && drone_bb.y < 10) snprintf(drone_str, sizeof(drone_str), "0%d;0%d", drone_bb.x, drone_bb.y);
-            else if (drone_bb.x < 10) snprintf(drone_str, sizeof(drone_str), "0%d;%d", drone_bb.x, drone_bb.y);
-            else if (drone_bb.y < 10) snprintf(drone_str, sizeof(drone_str), "%d;0%d", drone_bb.x, drone_bb.y);
-            else snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
-
+            droneInfotoString(&drone_bb, &force, &speed, droneInfo_str, sizeof(droneInfo_str), file);
+            fprintf(file, "[I] Drone info %s\n", droneInfo_str);
+            fflush(file);
             // drone sends its position to BB
-            if (write(fds[askwr], drone_str, strlen(drone_str)) == -1) {
+            if (write(fds[askwr], droneInfo_str, strlen(droneInfo_str)) == -1) {
                 perror("[I] Error sending drone position");
                 exit(EXIT_FAILURE);
             }
@@ -380,13 +375,12 @@ int main(int argc, char *argv[]) {
             updatePosition(&drone, force, DRONEMASS, &speed,&speedPrev, file);
             drone_bb = DroneToDrone_bb(&drone);
             
-            if (drone_bb.x < 10 && drone_bb.y < 10) snprintf(drone_str, sizeof(drone_str), "0%d;0%d", drone_bb.x, drone_bb.y);
-            else if (drone_bb.x < 10) snprintf(drone_str, sizeof(drone_str), "0%d;%d", drone_bb.x, drone_bb.y);
-            else if (drone_bb.y < 10) snprintf(drone_str, sizeof(drone_str), "%d;0%d", drone_bb.x, drone_bb.y);
-            else snprintf(drone_str, sizeof(drone_str), "%d;%d", drone_bb.x, drone_bb.y);
+            droneInfotoString(&drone_bb, &force, &speed, droneInfo_str, sizeof(droneInfo_str), file);
 
             // drone sends its position to BB
-            if (write(fds[askwr], drone_str, strlen(drone_str)) == -1) {
+            fprintf(file, "[A] Drone info %s\n", droneInfo_str);
+            fflush(file);
+            if (write(fds[askwr], droneInfo_str, strlen(droneInfo_str)) == -1) {
                 perror("[DRONE] Error sending drone position");
                 exit(EXIT_FAILURE);
             }
