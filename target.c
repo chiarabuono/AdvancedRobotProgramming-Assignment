@@ -131,11 +131,13 @@ void refreshMap(){
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
-        handler(TARGET,100);
+        handler(TARGET, file);
     }else if(signo == SIGTERM){
         fprintf(file, "Target is quitting\n");
         fflush(file);   
         fclose(file);
+        close(fds[recrd]);
+        close(fds[askwr]);
         exit(EXIT_SUCCESS);
     }
 }

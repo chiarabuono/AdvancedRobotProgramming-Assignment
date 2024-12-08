@@ -79,7 +79,7 @@ extern char jsonBuffer[MAX_FILE_SIZE];
 
 int writeSecure(char* filename, char* data, int numeroRiga, char mode);
 int readSecure(char* filename, char* data, int numeroRiga);
-void handler(int id, int sleep);
+void handler(int id, FILE *file);
 
 void fromStringtoDrone(Drone_bb *drone, const char *drone_str, FILE *file);
 void fromStringtoForce(Force *force, const char *force_str, FILE *file);

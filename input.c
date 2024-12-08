@@ -10,6 +10,7 @@
 #include "auxfunc.h"
 #include <signal.h>
 #include <cjson/cJSON.h>
+#include "keyboardMap.h"
 
 // process that ask or receive
 #define askwr 1
@@ -46,11 +47,15 @@ float scaleh = 1.0, scalew = 1.0;
 
 int btnValues[9] ={0};
 char *default_text[9] = {"L-UP", "UP", "R-UP", "LEFT", "CENTER", "RIGHT", "L-DOWN", "DOWN", "R-DOWN"};
-char *menu_text[9] = {"Q", "W", "E", "A", "S", "D", "Z", "X", "C"};
+char *menu_text[9] = {"W", "E", "R", "S", "D", "F", "X", "C", "V"};
 char *droneInfoText[6] = {"Position x: ", "Position y: ", "Force x: ", "Force y: ", "Speed x ", "Speed y: "};
-char *menuBtn[3] = {"Press P to pause", "Press L to save", "Press M to quit"};
+char *menuBtn[3] = {"Press P to pause", "Press Q to quit", "Press L to save"};
 
 int pid;
+int fds[4]; 
+
+char name[50] = ""; // Buffer per il testo
+int level = 0;
 
 float droneInfo[6] = {0.0};
 
@@ -65,11 +70,13 @@ FILE *file;
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
-        handler(INPUT,100);
+        handler(INPUT, file);
     }else if(signo == SIGTERM){
         fprintf(file, "Input is quitting\n");
         fflush(file);   
         fclose(file);
+        close(fds[recrd]);
+        close(fds[askwr]);
         exit(EXIT_SUCCESS);
     }
 }
@@ -115,32 +122,147 @@ void drawBtn(int b, int mode) {
     }
 }
 
-void mainMenu(){
+void setName() {
+    werase(stdscr);
+    box(stdscr, 0, 0);
+
+    const char *prompt = "Choose a name:";
+    const int prompt_row = nh / 2 - 2; // Riga leggermente sopra il centro
+    const int name_row = nh / 2;     // Riga per il nome
+    const int error_row = nh / 2 + 2; // Riga per i messaggi di errore
+
+    mvwprintw(stdscr, prompt_row, (nw - strlen(prompt)) / 2, "%s", prompt);
+    wrefresh(stdscr);
+
+    int ch = 0;
+    int pos = 0;
+
+    while (ch != MY_KEY_ENTER) {
+        ch = getch(); // Legge il prossimo carattere premuto
+
+        if (ch == MY_KEY_BACK) {
+            // Backspace: rimuove l'ultimo carattere se possibile
+            if (pos > 0) {
+                pos--;
+                name[pos] = '\0'; // Termina correttamente la stringa
+            }
+        } else if (ch >= 32 && ch <= 126) { // Solo caratteri stampabili
+            if (pos < sizeof(name) - 1) {
+                name[pos++] = ch;
+                name[pos] = '\0';
+            }
+        } else {
+            // Mostra messaggio di errore per tasto non valido
+            mvwprintw(stdscr, error_row, (nw - strlen("Invalid key, try again.")) / 2, "%s", "Invalid key, try again.");
+        }
+
+        // Ridisegna lo schermo
+        werase(stdscr);
+        box(stdscr, 0, 0);
+        mvwprintw(stdscr, prompt_row, (nw - strlen(prompt)) / 2, "%s", prompt);
+        mvwprintw(stdscr, name_row, (nw - strlen(name)) / 2, "%s", name);
+        wrefresh(stdscr);
+    }
+
+    // Mostra il nome inserito e termina
+    werase(stdscr);
+    box(stdscr, 0, 0);
+    char confirmation[100];
+    snprintf(confirmation, sizeof(confirmation), "Name set: %s", name);
+    mvwprintw(stdscr, nh / 2, (nw - strlen(confirmation)) / 2, "%s", confirmation);
+    wrefresh(stdscr);
+}
+
+void setDifficulty(){
+    werase(stdscr);
+    box(stdscr, 0, 0);
+    mvwprintw(stdscr, 10, 17, "%s", "Choose the difficulty you want to play"); 
+    mvwprintw(stdscr, 11, 17, "%s", "1 - easy"); 
+    mvwprintw(stdscr, 12, 17, "%s", "2 - medium"); 
+    mvwprintw(stdscr, 13, 17, "%s", "3 - hard"); 
+    wrefresh(stdscr);
+    int ch = 0;
+    while (ch != 49 && ch != 50 && ch != 51) {
+        ch = getch();
+        if(ch == 49){
+            level = 1;
+        }else if(ch == 50){
+            level = 2;
+        }else if(ch == 51){
+            level = 3;
+        }
+    }
+    werase(stdscr);
+    box(stdscr, 0, 0);
+    char confirmation[100];
+    snprintf(confirmation, sizeof(confirmation), "Difficulty set: %d", level);
+    mvwprintw(stdscr, nh / 2, (nw - strlen(confirmation)) / 2, "%s", confirmation);
+    wrefresh(stdscr);
+}
+void setBtns(){
     btnSetUp(25,27);
-    werase(win);
-    box(win, 0, 0);
-    mvwprintw(win, 10, 17, "%s", "Do you want to use the default key configuration?"); 
-    mvwprintw(win, 11, 17, "%s", "y - yes"); 
-    mvwprintw(win, 12, 17, "%s", "n - no"); 
-    wrefresh(win);
+    werase(stdscr);
+    box(stdscr, 0, 0);
+    mvwprintw(stdscr, 10, 17, "%s", "Do you want to use the default key configuration?"); 
+    mvwprintw(stdscr, 11, 17, "%s", "y - yes"); 
+    mvwprintw(stdscr, 12, 17, "%s", "n - no"); 
+    wrefresh(stdscr);
     drawBtn(99, MENU); //to make all the buttons white
-    sleep(5);
+    usleep(10000);
     int ch = getch();
     if (ch == 110){
         for(int i = 0; i < BUTTONS; i++){
-            werase(win);
-            box(win, 0, 0);   
-            mvwprintw(win, 10, 10, "%s", "Choose wich key do you want to use for the highlighted direction?"); 
-            wrefresh(win);
+            werase(stdscr);
+            box(stdscr, 0, 0);   
+            mvwprintw(stdscr, 10, 10, "%s", "Choose wich key do you want to use for the highlighted direction?"); 
+            wrefresh(stdscr);
             drawBtn(i, DEFAULT);
-            int ch = getch();
-            btnValues[i] = ch;
+            while ((ch = getch()) == ERR) {
+                //nessun tasto premuto dall'utente
+                usleep(100000);
+            }
+            if(ch == MY_KEY_p || ch == MY_KEY_q){
+                mvwprintw(stdscr, 10, 20, "%s", "Key already used");
+                usleep(100000);
+                continue;
+            } else{
+                btnValues[i] = ch;
+            }
             usleep(100000);
         }
+        werase(stdscr);
     }else if(ch == 121){
         return;
     }else{
-        mainMenu();
+        setBtns();
+    }
+}
+void mainMenu(){
+    
+    setName();
+    setBtns();
+    setDifficulty();
+    
+    werase(stdscr);
+    wrefresh(stdscr);
+
+    char settings[50] = {0};
+    strcat(settings,name);
+    char levelChoose [4];
+    snprintf(levelChoose, sizeof(levelChoose), ";%d", level);
+    strcat(settings, levelChoose);
+    fprintf(file,"\nSettings: %s\n", settings);
+    fflush(file);
+
+    if(write(fds[askwr],settings,strlen(settings) + 1) == -1){
+        fprintf(file, "Error sending settings\n");
+        fflush(file);     
+    }
+
+    char rec[2];
+    if(read(fds[recrd], &rec, 2) == -1){
+        fprintf(file, "Error reading ack");
+        fflush(file);
     }
 }
 
@@ -234,6 +356,7 @@ void resizeHandler(int sig){
     werase(control);
     werase(stdscr);
     
+    wrefresh(stdscr);
     win = newwin(nh, (int)(nw / 2) - 1, 0, 0); 
     control = newwin(nh, (int)(nw / 2) - 1, 0, (int)(nw / 2) + 1);
     box(win, 0, 0); 
@@ -311,7 +434,6 @@ int main(int argc, char *argv[]) {
 
     // FDs reading
     char *fd_str = argv[1];
-    int fds[4]; 
     int index = 0;
     
     char *token = strtok(fd_str, ",");
@@ -354,7 +476,7 @@ int main(int argc, char *argv[]) {
     win = newwin(nh, (int)(nw / 2), 0, 0); 
     control = newwin(nh, (int)(nw / 2) - 1, 0, (int)(nw / 2) + 1);
 
-    //mainMenu();
+    mainMenu();
     btnSetUp((int)(((float)nh/2)/2),(int)((((float)nw / 2) - 35)/2));
  
     while (1) {
@@ -365,8 +487,6 @@ int main(int argc, char *argv[]) {
             if ((ch = getch()) == ERR) {
                 //nessun tasto premuto dall'utente
                 usleep(100000);
-                werase(stdscr);
-                wrefresh(stdscr);
 
                 werase(win);
                 werase(control);
@@ -420,11 +540,11 @@ int main(int argc, char *argv[]) {
                 } else if (ch == btnValues[8]) {
                     btn = RIGHTDOWN;
                     strcat(msg, moves[btn]);
-                }else if (ch == 112){
+                }else if (ch == MY_KEY_p || ch == MY_KEY_P){
                     btn = 112; //Pause
                     strcat(msg, "P");
                     mode = PAUSE;
-                } else if (ch == 109){
+                } else if (ch == MY_KEY_q || ch == MY_KEY_Q){
                     btn = 109; //Quit
                     strcat(msg, "q");
                     fprintf(file,"sending quit: %s\n",msg);
@@ -463,19 +583,37 @@ int main(int argc, char *argv[]) {
             fprintf(file,"Mode: PAUSE\n");
             fflush(file);
 
-            while ((ch = getch()) != 112){
+            while ((ch = getch()) != MY_KEY_P && ch != MY_KEY_p && ch != MY_KEY_Q && ch != MY_KEY_q) {
+                werase(stdscr);
+                box(stdscr, 0, 0);
+                const char *prompt = "Press P to play";
+                const char *prompt2 = "Press Q to save & quit";
+                int prompt_row = nh / 2 - 2; // Riga leggermente sopra il centro
+                int name_row = nh / 2;     // Riga per il nome
+                int error_row = nh / 2 + 2; // Riga per i messaggi di errore
+
+                mvwprintw(stdscr, prompt_row, (nw - strlen(prompt)) / 2, "%s", prompt);
+                mvwprintw(stdscr, prompt_row + 1, (nw - strlen(prompt)) / 2, "%s", prompt2);
+
+                wrefresh(stdscr);
+
                 usleep(10000);
             }
-            mode = PLAY;
-            strcat(msg, "P");
-            fprintf(file,"sending play: %s\n",msg);
-            fflush(file);
-            write(fds[askwr],msg,strlen(msg) + 1);
+            if(ch == MY_KEY_P || ch == MY_KEY_p){
+                mode = PLAY;
+                strcat(msg, "P");
+                fprintf(file,"sending play: %s\n",msg);
+                fflush(file);
+                write(fds[askwr],msg,strlen(msg) + 1);
+            }else if(ch == MY_KEY_Q || ch == MY_KEY_q){
+                strcat(msg, "q");
+                fprintf(file,"sending quit: %s\n",msg);
+                fflush(file);
+                write(fds[askwr],msg,strlen(msg) + 1);
+                
+            }
         }
 
     }
-    
-    // Chiudiamo il file
-    fclose(file);
     return 0;
 }

@@ -14,6 +14,7 @@
 #include "auxfunc.h"
 #include <signal.h>
 #include <cjson/cJSON.h>
+#include <time.h>
 
 // process to whom that asked or received
 #define askwr 1
@@ -33,6 +34,8 @@
 int nh, nw;
 float scaleh = 1.0, scalew = 1.0;
 
+float second = 1000000;
+
 int pid;
 
 char ack [2] = "A\0";
@@ -44,13 +47,12 @@ WINDOW * win;
 WINDOW * map;
 
 FILE *file;
+FILE *conffile;
 
 Drone_bb drone;
 Targets targets;
 Obstacles obstacles;
 Drone_bb prevDrone = {0, 0};
-
-FILE *conffile;
 
 Config config;
 
@@ -68,14 +70,29 @@ char temp[len_str_targets + 2];
 char send_targetobs_str[len_str_obstacles + len_str_targets + 2];
 
 int score  = 0;
-int time = 10;
+int levelTime = 10;
+float elapsedTime = 0;
+int remainingTime = 0;
 int level = 0;
 char name[20];
 char diff[10];
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
-        handler(BLACKBOARD,100);
+        handler(BLACKBOARD, file);
+    } else if (signo == SIGTERM) {
+        fprintf(file, "Blackboard is quitting\n");
+        fflush(file);
+        fclose(file);
+        close(fds[DRONE][recwr]);
+        close(fds[DRONE][askrd]);
+        close(fds[INPUT][recwr]);
+        close(fds[INPUT][askrd]);
+        close(fds[OBSTACLE][recwr]);
+        close(fds[OBSTACLE][askrd]);
+        close(fds[TARGET][recwr]);
+        close(fds[TARGET][askrd]);
+        exit(EXIT_SUCCESS);
     }
 }
 
@@ -241,7 +258,7 @@ void drawTarget(WINDOW * win) {
     for(int i = 0; i < MAX_TARGET; i++){
         if (mask[i] == 1) continue;
         char val_str[2];
-        sprintf(val_str, "%d", i/*targets.value[i]*/); // Converte il valore in stringa
+        sprintf(val_str, "%d", i + 1/*targets.value[i]*/); // Converte il valore in stringa
         mvwprintw(win, (int)(targets.y[i] * scaleh), (int)(targets.x[i] * scalew), "%s", val_str); // Usa un formato esplicito
     } 
     wattroff(win, COLOR_PAIR(3)); 
@@ -256,7 +273,7 @@ void drawMenu(WINDOW* win) {
     char score_str[10], diff_str[10], time_str[10], level_str[10];
     sprintf(score_str, "%d", score);
     sprintf(diff_str, "%s", diff);
-    sprintf(time_str, "%d", time);
+    sprintf(time_str, "%d", remainingTime);
     sprintf(level_str, "%d", level);
 
     // Array con le etichette e i valori corrispondenti
@@ -320,6 +337,7 @@ void detectCollision(Drone_bb* drone, Drone_bb * prev, Targets* targets, FILE* f
                 mask[i] = 1;
                 collsion = 1;
                 targetsHit++;
+                score += (i + 1);
 
                 fprintf(file, "BOOM! Target %d reached\n", i);
                 fflush(file);
@@ -529,6 +547,9 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    fprintf(file, "Blackboard PID: %d\n", pid);
+    fflush(file);
+
     // closing the unused fds to avoid deadlock
     close(fds[DRONE][askwr]);
     close(fds[DRONE][recrd]);
@@ -551,6 +572,7 @@ int main(int argc, char *argv[]) {
 
     signal(SIGUSR1, sig_handler);
     signal(SIGWINCH, resizeHandler);
+    signal(SIGTERM, sig_handler);
 
     initscr();
     start_color();
@@ -574,13 +596,13 @@ int main(int argc, char *argv[]) {
 
     mapInit(file);
 
+    usleep(500000);
+
     char datareaded[200];
     if (readSecure("log.txt", datareaded,1) == -1) {
         perror("Error reading the log file");
         exit(1);
     }
-
-    usleep(500000);
 
     // Parse the data and assign roles
     char *token = strtok(datareaded, ",");
@@ -610,11 +632,59 @@ int main(int argc, char *argv[]) {
         fflush(file);
     }
 
-    readConf();
+    //WAIT FOR THE MESSAGE FROM INPUT WITH THE SETTINGS
+
+    char settings[50]; 
+                
+    if (read(fds[INPUT][askrd], settings, 50) == -1){
+        fprintf(file, "Error reading input\n");
+        fflush(file);
+        exit(EXIT_FAILURE);
+    }
+
+    if (write(fds[INPUT][recwr], ack, strlen(ack) + 1) == -1){
+        fprintf(file, "Error sending ack\n");
+        fflush(file);
+    }
+
+    token = strtok(settings, ";");
+    int diffic;
+    if (token != NULL) {
+        // Copia il primo token (il nome) in name
+        strncpy(name, token, sizeof(name));
+        name[sizeof(name) - 1] = '\0'; // Assicurati che la stringa sia terminata correttamente
+
+        // Prendi il prossimo token (il numero)
+        token = strtok(NULL, ";");
+        if (token != NULL) {
+            // Converti il numero in intero
+            diffic = atoi(token);
+        } else {
+            fprintf(file, "Errore: numero mancante.\n");
+        }
+    } else {
+        fprintf(file, "Errore: input non valido.\n");
+    }
+    
+    if(diffic == 1){
+        strcpy(diff,"Easy");
+    } else if(diffic == 2){
+        strcpy(diff,"Medium");
+    } else if(diffic == 3){
+        strcpy(diff,"Hard");
+    }
+
+    elapsedTime = 0;
 
     while (1) {
-        fprintf(file, "Mode: PLAY\n");
-        fflush(file);
+        
+        elapsedTime += PERIODBB/second;
+        remainingTime = levelTime - (int)elapsedTime;
+
+        if (remainingTime < 0){
+            elapsedTime = 0;
+        }
+
         if (targetsHit >= numTarget) {
             fprintf(file, "All targets reached\n");
             fflush(file);
@@ -782,7 +852,7 @@ int main(int argc, char *argv[]) {
                     for(int i = 0; i < 12; i++){
                         pause[i] = '\0';
                     }  
-                    while(pause[2] != 'P'){
+                    while(pause[2] != 'P' && pause[2] != 'q'){
                         fprintf(file, "Waiting for play\n");
                         fflush(file);
                         if (read(fds[INPUT][askrd], pause, 12) == -1){
@@ -791,18 +861,45 @@ int main(int argc, char *argv[]) {
                         exit(EXIT_FAILURE);
                         }
                     }
-                    fprintf(file, "Play\n");
-                    fflush(file);
+                    if(pause[2] == 'P'){
+                        fprintf(file, "Play\n");
+                        fflush(file);
+                        mode = PLAY;
+                    }else if(pause[2] == 'q'){
+                        fprintf(file, "Quit\n");
+                        fflush(file);
+                        for(int j = 0; j < 6; j++){
+                            if (j != BLACKBOARD && pids[j] != 0){ 
+                                if (kill(pids[j], SIGTERM) == -1) {
+                                fprintf(file,"Process %d is not responding or has terminated\n", pids[j]);
+                                fflush(file);
+                                }
+
+                                fprintf(file, "Killed process %d\n", pids[j]);
+                                fflush(file);
+                            }
+                        }
+
+                        fprintf(file, "terminating blackboard\n");
+                        fflush(file);
+                        fclose(file);
+                        exit(EXIT_SUCCESS);
+                    }
                     continue;
 
                 }else if (inp[2] == 'q'){
-                    for(int i = 0; i < 6; i++){
-                        if (i != BLACKBOARD){ 
-                            kill(pids[i], SIGTERM);
-                            fprintf(file, "Killed process %d\n", pids[i]);
+                    for(int j = 0; j < 6; j++){
+                        if (j != BLACKBOARD && pids[j] != 0){ 
+                            if (kill(pids[j], SIGTERM) == -1) {
+                            fprintf(file,"Process %d is not responding or has terminated\n", pids[j]);
+                            fflush(file);
+                            }
+
+                            fprintf(file, "Killed process %d\n", pids[j]);
                             fflush(file);
                         }
                     }
+
                     fprintf(file, "terminating blackboard\n");
                     fflush(file);
                     fclose(file);

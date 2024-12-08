@@ -25,6 +25,7 @@
 float K = 1.0;
 
 int pid;
+int fds[4];
 
 FILE *file;
 
@@ -216,11 +217,13 @@ Force total_force(Force drone, Force obstacle, Force target, FILE* file){
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
-        handler(DRONE, 100);
+        handler(DRONE, file);
     }else if(signo == SIGTERM){
         fprintf(file, "Drone is quitting\n");
         fflush(file);   
         fclose(file);
+        close(fds[recrd]);
+        close(fds[askwr]);
         exit(EXIT_SUCCESS);
     }
 }
@@ -240,7 +243,6 @@ int main(int argc, char *argv[]) {
 
     // FDs reading
     char *fd_str = argv[1];
-    int fds[4];
     int index = 0;
 
     char *token = strtok(fd_str, ",");

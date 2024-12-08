@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "auxfunc.h"
+#include <time.h>
 
 int numTarget = 5;
 int numObstacle = 10;
@@ -553,9 +554,15 @@ void concatenateStr(const char *str1, const char *str2, char *output, size_t out
 //     return 0;
 // }
 
-void handler(int id, int sleep) {
+void handler(int id, FILE *file) {
 
     char log_entry[256];
-    snprintf(log_entry, sizeof(log_entry),"%d",sleep);
-    writeSecure("log.txt", log_entry, id + 2, 'o');
+    time_t rawtime;
+    struct tm *timeinfo;
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    strftime(log_entry, sizeof(log_entry), "%H:%M:%S", timeinfo);
+    //fprintf(file, "Process %d received signal from WD at %s\n", id, log_entry);
+    //fflush(file);
+    writeSecure("log.txt", log_entry, id + 3, 'o');
 }

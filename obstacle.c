@@ -21,17 +21,20 @@
 #define OBSTACLE_MASS 0.1
 
 int pid;
+int fds[4];
 
 FILE *file;
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1)
     {
-        handler(OBSTACLE, 100);
+        handler(OBSTACLE, file);
     }else if(signo == SIGTERM){
         fprintf(file, "Obstacle is quitting\n");
         fflush(file);   
         fclose(file);
+        close(fds[recrd]);
+        close(fds[askwr]);
         exit(EXIT_SUCCESS);
     }
 }
@@ -136,7 +139,6 @@ int main(int argc, char *argv[]) {
 
     // FDs reading
     char *fd_str = argv[1];
-    int fds[4];
     int index = 0;
 
     char *token = strtok(fd_str, ",");
