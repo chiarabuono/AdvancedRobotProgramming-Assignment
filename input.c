@@ -40,16 +40,20 @@
 #define RIGHTDOWN 8
 
 #define DEFAULT 0
-#define MENU 2
+#define MENU 1
+
+#define CHOOSENAME 0
+#define CHOOSEBUTTON 1
+#define CHOOSEDIFF 2
 
 int nh, nw;
 float scaleh = 1.0, scalew = 1.0;
 
 int btnValues[9] ={0};
-char *default_text[9] = {"L-UP", "UP", "R-UP", "LEFT", "CENTER", "RIGHT", "L-DOWN", "DOWN", "R-DOWN"};
-char *menu_text[9] = {"W", "E", "R", "S", "D", "F", "X", "C", "V"};
+// char *default_text[9] = {"L-UP", "UP", "R-UP", "LEFT", "CENTER", "RIGHT", "L-DOWN", "DOWN", "R-DOWN"};
+// char *menu_text[9] = {"W", "E", "R", "S", "D", "F", "X", "C", "V"};
 char *droneInfoText[6] = {"Position x: ", "Position y: ", "Force x: ", "Force y: ", "Speed x ", "Speed y: "};
-char *menuBtn[3] = {"Press P to pause", "Press Q to quit", "Press L to save"};
+char *menuBtn[2] = {"Press P to pause", "Press Q to quit"};
 
 int pid;
 int fds[4]; 
@@ -59,7 +63,8 @@ int level = 0;
 
 float droneInfo[6] = {0.0};
 
-int mode = PLAY;   
+int mode = MENU;   
+int disp = CHOOSENAME;
 
 WINDOW * winBut[9]; 
 WINDOW * win;
@@ -90,36 +95,78 @@ void btnSetUp (int row, int col){
     }
 }
 
-void drawBtn(int b, int mode) {
-    char *text[9] = {};
-    for(int i = 0; i < 9; i++){
-        text[i] = default_text[i];
-    }
-    if(mode == MENU){
-        for(int i = 0; i < 9; i++){
-        text[i] = menu_text[i];
-        }
-    }
+// void drawBtn(int b, int mode) {
+//     char *text[9] = {};
+//     for(int i = 0; i < 9; i++){
+//         text[i] = default_text[i];
+//     }
+//     if(mode == MENU){
+//         for(int i = 0; i < 9; i++){
+//             text[i] = menu_text[i];
+//         }
+//     }
 
-    char btn[10] = "";
+//     char btn[10] = "";
+//     for (int i = 0; i < BUTTONS; i++) {
+//         strcpy(btn, text[i]);
+//         werase(winBut[i]);
+//         // Calcolo della posizione centrata
+//         int r = 2; // Riga centrale
+//         int c = (BTNSIZEC - strlen(btn)) / 2; // Colonna centrata
+
+//         // Stampa del testo centrato nel pulsante
+//         if(i == b){
+//           wattron(winBut[i], COLOR_PAIR(1));  
+//         }
+//         box(winBut[i], 0, 0); // Disegna il bordo del pulsante
+//         mvwprintw(winBut[i], r, c, "%s", btn);
+//         wrefresh(winBut[i]); // Aggiorna la finestra
+//         if(i == b){
+//           wattroff(winBut[i], COLOR_PAIR(1));  
+//         }
+//     }
+// }
+
+void drawBtn(int b) {
+    char btn[10] = ""; // Stringa per ogni pulsante
+
     for (int i = 0; i < BUTTONS; i++) {
-        strcpy(btn, text[i]);
+        // Ottieni il carattere dal valore ASCII
+        if (btnValues[i] != 0) { // Verifica che il valore ASCII non sia vuoto
+            snprintf(btn, sizeof(btn), "%c", (char)btnValues[i]); // Converte in carattere
+        } else {
+            snprintf(btn, sizeof(btn), " "); // Se vuoto, usa uno spazio
+        }
+
         werase(winBut[i]);
+
         // Calcolo della posizione centrata
         int r = 2; // Riga centrale
         int c = (BTNSIZEC - strlen(btn)) / 2; // Colonna centrata
 
         // Stampa del testo centrato nel pulsante
-        if(i == b){
-          wattron(winBut[i], COLOR_PAIR(1));  
+        if (i == b) {
+            wattron(winBut[i], COLOR_PAIR(1));  
         }
         box(winBut[i], 0, 0); // Disegna il bordo del pulsante
         mvwprintw(winBut[i], r, c, "%s", btn);
         wrefresh(winBut[i]); // Aggiorna la finestra
-        if(i == b){
-          wattroff(winBut[i], COLOR_PAIR(1));  
+        if (i == b) {
+            wattroff(winBut[i], COLOR_PAIR(1));  
         }
     }
+}
+
+void drawName(){
+    const int prompt_row = nh / 2 - 2; // Riga leggermente sopra il centro
+    const int name_row = nh / 2;     // Riga per il nome
+    const char *prompt = "Choose a name:";
+
+    werase(stdscr);
+    box(stdscr, 0, 0);
+    mvwprintw(stdscr, prompt_row, (nw - strlen(prompt)) / 2, "%s", prompt);
+    mvwprintw(stdscr, name_row, (nw - strlen(name)) / 2, "%s", name);
+    wrefresh(stdscr);
 }
 
 void setName() {
@@ -157,11 +204,7 @@ void setName() {
         }
 
         // Ridisegna lo schermo
-        werase(stdscr);
-        box(stdscr, 0, 0);
-        mvwprintw(stdscr, prompt_row, (nw - strlen(prompt)) / 2, "%s", prompt);
-        mvwprintw(stdscr, name_row, (nw - strlen(name)) / 2, "%s", name);
-        wrefresh(stdscr);
+        drawName();
     }
 
     // Mostra il nome inserito e termina
@@ -173,13 +216,36 @@ void setName() {
     wrefresh(stdscr);
 }
 
-void setDifficulty(){
-    werase(stdscr);
-    box(stdscr, 0, 0);
-    mvwprintw(stdscr, 10, 17, "%s", "Choose the difficulty you want to play"); 
-    mvwprintw(stdscr, 11, 17, "%s", "1 - easy: Target and obstcles are static"); 
-    mvwprintw(stdscr, 12, 17, "%s", "2 - hard: Target and obstacles are moving"); 
+void drawDifficulty() {
+    werase(stdscr); // Pulisce la finestra
+    box(stdscr, 0, 0); // Disegna il bordo della finestra
+
+    // Testo delle righe
+    const char *line1 = "Choose the difficulty you want to play";
+    const char *line2 = "1 - easy: Target and obstacles are static";
+    const char *line3 = "2 - hard: Target and obstacles are moving";
+
+    // Calcolo delle posizioni verticali
+    int y1 = nh / 2 - 1; // Posizione verticale per la prima riga
+    int y2 = nh / 2;     // Posizione verticale per la seconda riga
+    int y3 = nh / 2 + 1; // Posizione verticale per la terza riga
+
+    // Calcolo delle posizioni orizzontali (centrato)
+    int x1 = (nw - strlen(line1)) / 2;
+    int x2 = (nw - strlen(line2)) / 2;
+    int x3 = (nw - strlen(line3)) / 2;
+
+    // Stampa le righe centrate
+    mvwprintw(stdscr, y1, x1, "%s", line1);
+    mvwprintw(stdscr, y2, x2, "%s", line2);
+    mvwprintw(stdscr, y3, x3, "%s", line3);
+
+    // Aggiorna la finestra
     wrefresh(stdscr);
+}
+
+void setDifficulty(){
+    drawDifficulty();
     int ch = 0;
     while (ch != 49 && ch != 50) {
         ch = getch();
@@ -190,40 +256,59 @@ void setDifficulty(){
             level = 2;
             writeSecure("log.txt", "2", 2, 'o');
         }
+        drawDifficulty();
+        usleep(10000); 
     }
     werase(stdscr);
-    box(stdscr, 0, 0);
 }
 
+int keyAlreadyUsed(int key, int index ){
+    for(int i = 0; i < index + 1; i++){
+        if(btnValues[i] == key || key == MY_KEY_p || key == MY_KEY_q || key == MY_KEY_Q || key == MY_KEY_P){
+            mvwprintw(stdscr, 13, 17, "%s", "Key already used");
+            wrefresh(stdscr);
+            return 1;
+        }
+    }
+    return 0;
+}
 void setBtns(){
-    btnSetUp(25,27);
     werase(stdscr);
     box(stdscr, 0, 0);
-    mvwprintw(stdscr, 10, 17, "%s", "Do you want to use the default key configuration?"); 
-    mvwprintw(stdscr, 11, 17, "%s", "y - yes"); 
-    mvwprintw(stdscr, 12, 17, "%s", "n - no"); 
-    wrefresh(stdscr);
-    drawBtn(99, MENU); //to make all the buttons white
+    const char *line1 = "Do you want to use the default key configuration?";
+    const char *line2 = "y - yes";
+    const char *line3 = "n - no";
+
+    // Calcola le posizioni orizzontali centrate
+    int col1 = (nw - strlen(line1)) / 2;
+    int col2 = (nw - strlen(line2)) / 2;
+    int col3 = (nw - strlen(line3)) / 2;
+
+    // Stampa le scritte centrate
+    mvwprintw(stdscr, 10, col1, "%s", line1);
+    mvwprintw(stdscr, 11, col2, "%s", line2);
+    mvwprintw(stdscr, 12, col3, "%s", line3);
+
+    btnSetUp(14,(col1 + col2)/2);
+
+    wrefresh(stdscr); 
+
+    drawBtn(99); //to make all the buttons white
     usleep(10000);
     int ch = getch();
-    if (ch == 110){
+    if (ch == MY_KEY_N || ch == MY_KEY_n) {
         for(int i = 0; i < BUTTONS; i++){
             werase(stdscr);
             box(stdscr, 0, 0);   
             mvwprintw(stdscr, 10, 10, "%s", "Choose wich key do you want to use for the highlighted direction?"); 
             wrefresh(stdscr);
-            drawBtn(i, DEFAULT);
-            while ((ch = getch()) == ERR) {
+            drawBtn(i);
+            while ((ch = getch()) == ERR || keyAlreadyUsed(ch, i)) {
                 //nessun tasto premuto dall'utente
                 usleep(100000);
             }
-            if(ch == MY_KEY_p || ch == MY_KEY_q){
-                mvwprintw(stdscr, 10, 20, "%s", "Key already used");
-                usleep(100000);
-                continue;
-            } else{
-                btnValues[i] = ch;
-            }
+            
+            btnValues[i] = ch;
             usleep(100000);
         }
         werase(stdscr);
@@ -250,8 +335,12 @@ void pauseMenu(){
 }
  
 void mainMenu(){
+    mode = MENU;
+    disp = CHOOSENAME;
     setName();
+    disp = CHOOSEBUTTON;
     setBtns();
+    disp = CHOOSEDIFF;
     setDifficulty();
     
     werase(stdscr);
@@ -273,6 +362,13 @@ void mainMenu(){
     char rec[2];
     if(read(fds[recrd], &rec, 2) == -1){
         fprintf(file, "Error reading ack");
+        fflush(file);
+    }
+    if(rec[0] == 'A'){
+        fprintf(file, "Ack received\n");
+        fflush(file);
+    }else{
+        fprintf(file, "Error receiving ack\n");
         fflush(file);
     }
 }
@@ -309,10 +405,10 @@ void drawInfo() {
 
      // Menu part 2 
 
-    int initialrow2 = ((nh / 3) + ((nh / 3 - 3) / 2) > 0) ? (( nh / 3) + ((nh / 3 - 3) / 2)) : (nh / 3);
+    int initialrow2 = ((nh / 3) + ((nh / 3 - 2) / 2) > 0) ? (( nh / 3) + ((nh / 3 - 2) / 2)) : (nh / 3);
     
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 2; i++) {
 
         // Calcola le lunghezze effettive delle stringhe
         int textLen = strlen(menuBtn[i]);
@@ -376,13 +472,57 @@ void resizeHandler(int sig){
         box(control, 0, 0);
         wrefresh(control);
         btnSetUp((int)(((float)nh/2)/2),(int)((((float)nw / 2) - 35)/2));
-        drawBtn(99, DEFAULT); //to make all the buttons white
+        drawBtn(99); //to make all the buttons white
         drawInfo();
-    }else if(mode == PAUSE){
-        pauseMenu();
-    } else if(mode == MENU){
+    }else if( mode == MENU && disp == CHOOSENAME){
+        getmaxyx(stdscr, nh, nw);  /* get the new screen size */
+        scaleh = ((float)nh / (float)WINDOW_LENGTH);
+        scalew = (float)nw / (float)WINDOW_WIDTH;
+        endwin();
+        initscr();
+        start_color();
+        curs_set(0);
+        noecho();
+        werase(win);
+        werase(control);
         werase(stdscr);
-        wrefresh(stdscr);
+        win = newwin(nh, (int)(nw / 2) - 1, 0, 0); 
+        control = newwin(nh, (int)(nw / 2) - 1, 0, (int)(nw / 2) + 1);
+
+        drawName();
+    }else if( mode == MENU && disp == CHOOSEBUTTON){
+        getmaxyx(stdscr, nh, nw);  /* get the new screen size */
+        scaleh = ((float)nh / (float)WINDOW_LENGTH);
+        scalew = (float)nw / (float)WINDOW_WIDTH;
+        endwin();
+        initscr();
+        start_color();
+        curs_set(0);
+        noecho();
+        werase(win);
+        werase(control);
+        werase(stdscr);
+        win = newwin(nh, (int)(nw / 2) - 1, 0, 0); 
+        control = newwin(nh, (int)(nw / 2) - 1, 0, (int)(nw / 2) + 1);
+
+        btnSetUp((int)(((float)nh/2)/2),(int)((((float)nw / 2) - 35)/2));
+        drawBtn(99); //to make all the buttons white
+    }else if (mode == MENU && disp == CHOOSEDIFF){
+        getmaxyx(stdscr, nh, nw);  /* get the new screen size */
+        scaleh = ((float)nh / (float)WINDOW_LENGTH);
+        scalew = (float)nw / (float)WINDOW_WIDTH;
+        endwin();
+        initscr();
+        start_color();
+        curs_set(0);
+        noecho();
+        werase(win);
+        werase(control);
+        werase(stdscr);
+        win = newwin(nh, (int)(nw / 2) - 1, 0, 0); 
+        control = newwin(nh, (int)(nw / 2) - 1, 0, (int)(nw / 2) + 1);
+
+        drawDifficulty();
     }
 }
 
@@ -496,7 +636,7 @@ int main(int argc, char *argv[]) {
 
     mainMenu();
     btnSetUp((int)(((float)nh/2)/2),(int)((((float)nw / 2) - 35)/2));
- 
+    mode = PLAY;
     while (1) {
         int ch;
         if(mode == PLAY){
@@ -512,7 +652,7 @@ int main(int argc, char *argv[]) {
                 wrefresh(win); 
                 box(control, 0 ,0);               
                 wrefresh(control);   
-                drawBtn(99, DEFAULT); //to make all the buttons white
+                drawBtn(99); //to make all the buttons white
                 drawInfo();
             }else {
                 //message to bb init
@@ -574,12 +714,12 @@ int main(int argc, char *argv[]) {
                 werase(win);
                 box(win, 0, 0);       
                 wrefresh(win);
-                drawBtn(btn, DEFAULT);
+                drawBtn(btn);
                 usleep(100000);
                 werase(win);
                 box(win, 0, 0);       
                 wrefresh(win);
-                drawBtn(99, DEFAULT); //to make all the buttons white
+                drawBtn(99); //to make all the buttons white
 
                 fprintf(file,"msg: %s\n", msg);
                 fflush(file);
