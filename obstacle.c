@@ -22,7 +22,7 @@
 
 int pid;
 int fds[4];
-
+//int level = 1;
 FILE *file;
 
 void sig_handler(int signo) {
@@ -199,6 +199,11 @@ int main(int argc, char *argv[]) {
         fprintf(file, "Reading drone and target position: %s\n", dronetarget_str);
         fflush(file);
 
+        //  char lvl[3];
+        // readSecure("log.txt", lvl, 8);
+        // level = atoi(lvl);
+        // numObstacle -= level; 
+        // if(numObstacle > MAX_OBSTACLES) numObstacle = MAX_OBSTACLES;
         fromStringtoPositions(&drone, targets.x, targets.y, dronetarget_str, file);
         obstacles = createObstacles(drone, targets);
 

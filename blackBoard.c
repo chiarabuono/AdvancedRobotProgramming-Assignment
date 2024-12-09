@@ -73,7 +73,7 @@ int score  = 0;
 int levelTime = 10;
 float elapsedTime = 0;
 int remainingTime = 0;
-int level = 0;
+int level = 1;
 char name[20];
 char diff[10];
 
@@ -547,9 +547,6 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    fprintf(file, "Blackboard PID: %d\n", pid);
-    fflush(file);
-
     // closing the unused fds to avoid deadlock
     close(fds[DRONE][askwr]);
     close(fds[DRONE][recrd]);
@@ -594,8 +591,6 @@ int main(int argc, char *argv[]) {
     char forceO_str[80];
     char forceT_str[80];
 
-    mapInit(file);
-
     usleep(500000);
 
     char datareaded[200];
@@ -632,8 +627,6 @@ int main(int argc, char *argv[]) {
         fflush(file);
     }
 
-    //WAIT FOR THE MESSAGE FROM INPUT WITH THE SETTINGS
-
     char settings[50]; 
                 
     if (read(fds[INPUT][askrd], settings, 50) == -1){
@@ -669,12 +662,16 @@ int main(int argc, char *argv[]) {
     if(diffic == 1){
         strcpy(diff,"Easy");
     } else if(diffic == 2){
-        strcpy(diff,"Medium");
-    } else if(diffic == 3){
         strcpy(diff,"Hard");
     }
 
     elapsedTime = 0;
+
+    char levelStr[3];
+    sprintf(levelStr, "%d", level);
+    writeSecure("log.txt", levelStr, 8, 'o');
+
+    mapInit(file);    
 
     while (1) {
         
@@ -693,6 +690,12 @@ int main(int argc, char *argv[]) {
             for (int i = 0; i < MAX_TARGET; i++) {
                 mask[i] = 0;
             }
+
+            level++;
+            char levelStr[3];
+            sprintf(levelStr, "%d", level);
+            writeSecure("log.txt", levelStr, 8, 'o');
+            
             kill(pids[TARGET], SIGUSR2);
             createNewMap();
         }

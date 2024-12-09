@@ -40,7 +40,7 @@
 #define RIGHTDOWN 8
 
 #define DEFAULT 0
-#define MENU 1
+#define MENU 2
 
 int nh, nw;
 float scaleh = 1.0, scalew = 1.0;
@@ -177,28 +177,24 @@ void setDifficulty(){
     werase(stdscr);
     box(stdscr, 0, 0);
     mvwprintw(stdscr, 10, 17, "%s", "Choose the difficulty you want to play"); 
-    mvwprintw(stdscr, 11, 17, "%s", "1 - easy"); 
-    mvwprintw(stdscr, 12, 17, "%s", "2 - medium"); 
-    mvwprintw(stdscr, 13, 17, "%s", "3 - hard"); 
+    mvwprintw(stdscr, 11, 17, "%s", "1 - easy: Target and obstcles are static"); 
+    mvwprintw(stdscr, 12, 17, "%s", "2 - hard: Target and obstacles are moving"); 
     wrefresh(stdscr);
     int ch = 0;
-    while (ch != 49 && ch != 50 && ch != 51) {
+    while (ch != 49 && ch != 50) {
         ch = getch();
         if(ch == 49){
             level = 1;
+            writeSecure("log.txt", "1", 2, 'o');
         }else if(ch == 50){
             level = 2;
-        }else if(ch == 51){
-            level = 3;
+            writeSecure("log.txt", "2", 2, 'o');
         }
     }
     werase(stdscr);
     box(stdscr, 0, 0);
-    char confirmation[100];
-    snprintf(confirmation, sizeof(confirmation), "Difficulty set: %d", level);
-    mvwprintw(stdscr, nh / 2, (nw - strlen(confirmation)) / 2, "%s", confirmation);
-    wrefresh(stdscr);
 }
+
 void setBtns(){
     btnSetUp(25,27);
     werase(stdscr);
@@ -237,8 +233,23 @@ void setBtns(){
         setBtns();
     }
 }
+
+void pauseMenu(){
+    werase(stdscr);
+    box(stdscr, 0, 0);
+    const char *prompt = "Press P to play";
+    const char *prompt2 = "Press Q to save & quit";
+    int prompt_row = nh / 2 - 2; // Riga leggermente sopra il centro
+    int name_row = nh / 2;     // Riga per il nome
+    int error_row = nh / 2 + 2; // Riga per i messaggi di errore
+
+    mvwprintw(stdscr, prompt_row, (nw - strlen(prompt)) / 2, "%s", prompt);
+    mvwprintw(stdscr, prompt_row + 1, (nw - strlen(prompt)) / 2, "%s", prompt2);
+
+    wrefresh(stdscr);
+}
+ 
 void mainMenu(){
-    
     setName();
     setBtns();
     setDifficulty();
@@ -344,28 +355,35 @@ void drawInfo() {
 }
 
 void resizeHandler(int sig){
-    getmaxyx(stdscr, nh, nw);  /* get the new screen size */
-    scaleh = ((float)nh / (float)WINDOW_LENGTH);
-    scalew = (float)nw / (float)WINDOW_WIDTH;
-    endwin();
-    initscr();
-    start_color();
-    curs_set(0);
-    noecho();
-    werase(win);
-    werase(control);
-    werase(stdscr);
-    
-    wrefresh(stdscr);
-    win = newwin(nh, (int)(nw / 2) - 1, 0, 0); 
-    control = newwin(nh, (int)(nw / 2) - 1, 0, (int)(nw / 2) + 1);
-    box(win, 0, 0); 
-    wrefresh(win);      
-    box(control, 0, 0);
-    wrefresh(control);
-    btnSetUp((int)(((float)nh/2)/2),(int)((((float)nw / 2) - 35)/2));
-    drawBtn(99, DEFAULT); //to make all the buttons white
-    drawInfo();    
+    if (mode == PLAY){
+        getmaxyx(stdscr, nh, nw);  /* get the new screen size */
+        scaleh = ((float)nh / (float)WINDOW_LENGTH);
+        scalew = (float)nw / (float)WINDOW_WIDTH;
+        endwin();
+        initscr();
+        start_color();
+        curs_set(0);
+        noecho();
+        werase(win);
+        werase(control);
+        werase(stdscr);
+        
+        wrefresh(stdscr);
+        win = newwin(nh, (int)(nw / 2) - 1, 0, 0); 
+        control = newwin(nh, (int)(nw / 2) - 1, 0, (int)(nw / 2) + 1);
+        box(win, 0, 0); 
+        wrefresh(win);      
+        box(control, 0, 0);
+        wrefresh(control);
+        btnSetUp((int)(((float)nh/2)/2),(int)((((float)nw / 2) - 35)/2));
+        drawBtn(99, DEFAULT); //to make all the buttons white
+        drawInfo();
+    }else if(mode == PAUSE){
+        pauseMenu();
+    } else if(mode == MENU){
+        werase(stdscr);
+        wrefresh(stdscr);
+    }
 }
 
 void readConfig(){
@@ -584,28 +602,18 @@ int main(int argc, char *argv[]) {
             fflush(file);
 
             while ((ch = getch()) != MY_KEY_P && ch != MY_KEY_p && ch != MY_KEY_Q && ch != MY_KEY_q) {
-                werase(stdscr);
-                box(stdscr, 0, 0);
-                const char *prompt = "Press P to play";
-                const char *prompt2 = "Press Q to save & quit";
-                int prompt_row = nh / 2 - 2; // Riga leggermente sopra il centro
-                int name_row = nh / 2;     // Riga per il nome
-                int error_row = nh / 2 + 2; // Riga per i messaggi di errore
-
-                mvwprintw(stdscr, prompt_row, (nw - strlen(prompt)) / 2, "%s", prompt);
-                mvwprintw(stdscr, prompt_row + 1, (nw - strlen(prompt)) / 2, "%s", prompt2);
-
-                wrefresh(stdscr);
-
+                pauseMenu();
                 usleep(10000);
             }
             if(ch == MY_KEY_P || ch == MY_KEY_p){
+                wrefresh(stdscr);
                 mode = PLAY;
                 strcat(msg, "P");
                 fprintf(file,"sending play: %s\n",msg);
                 fflush(file);
                 write(fds[askwr],msg,strlen(msg) + 1);
             }else if(ch == MY_KEY_Q || ch == MY_KEY_q){
+                wrefresh(stdscr);
                 strcat(msg, "q");
                 fprintf(file,"sending quit: %s\n",msg);
                 fflush(file);

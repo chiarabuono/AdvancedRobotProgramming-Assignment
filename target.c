@@ -20,11 +20,14 @@
 // management target
 #define PERIODT 100000
 
+#define EASY 1
+#define HARD 2
+
 int pid;
 float reset_period = 10; // [s]
 float second = 1000000;
 float reset = 0;
-
+int difficulty;
 int fds[4]; 
 FILE *file;
 
@@ -101,32 +104,39 @@ void targetsMoving(Targets targets) {
 }
 
 void refreshMap(){
+
+    // char lvl[3];
+    // readSecure("log.txt", lvl, 8);
+    // level = atoi(lvl);
+    // numTarget -= level; 
+    // if (numTarget > MAX_TARGET) numTarget = MAX_TARGET;
+       
     if (write(fds[askwr], "R", 2) == -1) {
-                    perror("[TARGET] Ready not sended correctly\n");
-                    exit(EXIT_FAILURE);
-                }
-            fprintf(file, "[TARGET] target ready\n");
-            fflush(file);
+        perror("[TARGET] Ready not sended correctly\n");
+        exit(EXIT_FAILURE);
+    }
+        fprintf(file, "[TARGET] target ready\n");
+        fflush(file);
 
-            if (read(fds[recrd], &drone_str, sizeof(drone_str)) == -1){
-                perror("[TA] Error reading drone position from [BB]");
-                exit(EXIT_FAILURE);
-            }
+    if (read(fds[recrd], &drone_str, sizeof(drone_str)) == -1){
+        perror("[TA] Error reading drone position from [BB]");
+        exit(EXIT_FAILURE);
+    }
 
-            fprintf(file, "Reading drone position: %s\nComputing target position\n", drone_str);
-            fflush(file);
+    fprintf(file, "Reading drone position: %s\nComputing target position\n", drone_str);
+    fflush(file);
 
-            fromStringtoDrone(&drone, drone_str, file);
-            targets = createTargets(drone);             // Create target vector
-            fromPositiontoString(targets.x, targets.y, MAX_TARGET, str, sizeof(str), file);
+    fromStringtoDrone(&drone, drone_str, file);
+    targets = createTargets(drone);             // Create target vector
+    fromPositiontoString(targets.x, targets.y, MAX_TARGET, str, sizeof(str), file);
 
-            fprintf(file, "Sending target position to [BB]%s\n", str);
-            fflush(file);
-    
-            if (write(fds[askwr], &str, sizeof(str)) == -1) {
-                perror("[TA] Error sending target position to [BB]");
-                exit(EXIT_FAILURE);
-            }
+    fprintf(file, "Sending target position to [BB]%s\n", str);
+    fflush(file);
+
+    if (write(fds[askwr], &str, sizeof(str)) == -1) {
+        perror("[TA] Error sending target position to [BB]");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void sig_handler(int signo) {
@@ -219,9 +229,18 @@ int main(int argc, char *argv[]) {
 
     fprintf(file, "Finish initialization\n");
     fflush(file);
+
+    // char diff[2];
+    // readSecure("log.txt",diff, 2);
+    // difficulty = atoi(diff);
+    // fprintf(file, "Difficulty: %d\n", difficulty);
+    // fflush(file);
+    
     reset = 0;
     while (1) {
-        reset += PERIODT/second;
+        if(difficulty == HARD){
+            reset += PERIODT/second;
+        }
         if (reset >= reset_period){
             reset = 0;
             refreshMap();
