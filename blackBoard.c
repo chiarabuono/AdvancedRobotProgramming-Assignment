@@ -49,11 +49,11 @@ Drone_bb prevDrone = {0, 0};
 int pidTarget;
 
 int mask[MAX_TARGET] = {0};
-int collsion = 0;
+int collision = 0;
 int targetsHit = 0;
 
 char drone_str[6];
-char droneInfo_str[36];
+char droneInfo_str[40];
 char target_str[len_str_targets];
 char obstacles_str[len_str_obstacles];
 char send_dronetarget_str[len_str_targets + 10];
@@ -83,7 +83,7 @@ void resizeHandler(int sig){
     curs_set(0);
     noecho();
     win = newwin(nh, nw, 0, 0); 
-    }
+}
 
 void mapInit(FILE *file){
 
@@ -251,7 +251,7 @@ int randomSelect(int n) {
 }
 
 void detectCollision(Drone_bb* drone, Drone_bb * prev, Targets* targets, FILE* file) {
-    //fprintf(file, "PREV(%d, %d), DRONE(%d, %d)\n TARGET:\n", prev->x, prev->y, drone->x, drone->y);
+    // fprintf(file, "PREV(%d, %d), DRONE(%d, %d)\n TARGET:\n", prev->x, prev->y, drone->x, drone->y);
     for (int i = 0; i < MAX_TARGET; i++) {
         //fprintf(file, " (%d, %d)", targets->x[i], targets->y[i]);
         if (!mask[i] && (((prev->x <= targets->x[i] + 2 && targets->x[i] - 2 <= drone->x)  &&
@@ -259,10 +259,10 @@ void detectCollision(Drone_bb* drone, Drone_bb * prev, Targets* targets, FILE* f
             ((prev->x >= targets->x[i] - 2 && targets->x[i] >= drone->x + 2) &&
             (prev->y >= targets->y[i] - 2 && targets->y[i] >= drone->y + 2) ))){
                 mask[i] = 1;
-                collsion = 1;
+                collision = 1;
                 targetsHit++;
 
-                fprintf(file, "BOOM! Target %d reached\n", i);
+                fprintf(file, "BOOM! Target %d reached. ", i);
                 fflush(file);
                 fprintf(file, "Mask: ");
                 for (int j = 0; j < MAX_TARGET; j++) {
@@ -276,10 +276,54 @@ void detectCollision(Drone_bb* drone, Drone_bb * prev, Targets* targets, FILE* f
 
 }
 
+void visibleTargets(char* newMap) {
+    char targetObstacle[100] = {0};  // concatenation string used
+    char buffer[10];                 // buffer used to convert int to str           
+    int counter = 0;                // counter to remove last coma
+
+    // adding target x coordinates
+    for (int i = 0; i < MAX_TARGET; i++) {
+        if (mask[i] == 0) {
+            snprintf(buffer, sizeof(buffer), "%d", targets.x[i]); 
+            strcat(targetObstacle, buffer);                        
+            strcat(targetObstacle, ",");                           
+            counter++;
+        }
+    }
+
+    // removing last coma and adding ;
+    if (counter > 0) {
+        targetObstacle[strlen(targetObstacle) - 1] = 0;
+        counter = 0;
+    }
+    strcat(targetObstacle, ";");
+
+    // adding targets y
+    for (int i = 0; i < MAX_TARGET; i++) {
+        if (mask[i] == 0) {
+            snprintf(buffer, sizeof(buffer), "%d", targets.y[i]); 
+            strcat(targetObstacle, buffer);                        
+            strcat(targetObstacle, ",");                           
+            counter++;
+        }
+    }
+    
+    // removing last coma
+    if (counter > 0) {
+        targetObstacle[strlen(targetObstacle) - 1] = 0;
+        counter = 0;
+    }
+    strcat(targetObstacle, ";");
+    strcat(targetObstacle, obstacles_str);  // obstacles added
+
+    newMap[0] = 'M';              // Aggiungi l'intestazione
+    strcat(newMap, targetObstacle);  // compose the string
+}
+
 void createNewMap(){
     char rec[2];
         read(fds[TARGET][askrd], &rec, 2);
-        fprintf(file, "[createNewMap - T] Received: %s\n", rec);
+        fprintf(file, "[createNewMap] Received: %s\n", rec);
         fflush(file);
         if(rec[0] == 'R'){
 
@@ -502,7 +546,7 @@ int main(int argc, char *argv[]) {
             fprintf(file, "All targets reached\n");
             fflush(file);
             targetsHit = 0;
-            collsion = 0;
+            collision = 0;
             for (int i = 0; i < MAX_TARGET; i++) {
                 mask[i] = 0;
             }
@@ -567,31 +611,18 @@ int main(int argc, char *argv[]) {
                 char rec[2];
                 read(fds[DRONE][askrd], &rec, 2);
 
-                fprintf(file, "[main - D] Received: %s\n", rec);
-                fflush(file);
-
                 if(rec[0] == 'R'){
-                    if (collsion)
+                    if (collision)
                     {
-                        collsion = 0;
-
-                        char targetObstacle[100] = {0};
-                        strcat(targetObstacle, target_str);
-                        strcat(targetObstacle, ";");
-                        strcat(targetObstacle, obstacles_str);
-                        fromStringtoPositionsWithTwoTargets(targets.x, targets.y, obstacles.x,obstacles.y,targetObstacle, file);
-
-                        char newMap [100];
-                        newMap[0] = 'M';
-                        strcat(newMap, targetObstacle);
-                        fprintf(file, "New map:%s\n", newMap);
-                        fflush(file);
-
-                        fprintf(file, "Send new map to [DRONE]\n");
+                        collision = 0;
+                        char newmap[100] = {0};
+                        visibleTargets(newmap);
+                        
+                        fprintf(file, "Send new map to [DRONE]: %s\n", newmap);
                         fflush(file);
                         
-                        if (write(fds[DRONE][recwr], "M", 2) == -1) {
-                            fprintf(file, "[BB] Error asking drone position\n");
+                        if (write(fds[DRONE][recwr], newmap, sizeof(newmap)) == -1) {
+                            fprintf(file, "[BB] Error sending new map to drone\n");
                             fflush(file);
                             exit(EXIT_FAILURE);
                         }
@@ -625,9 +656,6 @@ int main(int argc, char *argv[]) {
                         storePreviousPosition(&drone);
                         fromStringtoDroneInfo(droneInfo_str, drone_str, file);
                         fromStringtoDrone(&drone, drone_str, file);
-                    
-                        fprintf(file, "[D-else] Drone position: %s -> (%d,%d)\n", drone_str, drone.x, drone.y);
-                        fflush(file);
                         
                     }
                 }

@@ -15,7 +15,8 @@
 #define MAX_TARGET 5
 #define MAX_OBSTACLES 10
 #define NO_SPAWN_DIST 5
-#define ETA 0.2
+#define ETA 5
+#define STEP 0.1
 
 #define FORCE_THRESHOLD 5 //[m]
 #define MIN_THRESHOLD 2 //[m]
