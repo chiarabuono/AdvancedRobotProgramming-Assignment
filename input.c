@@ -62,6 +62,7 @@ char name[50] = ""; // Buffer per il testo
 int level = 0;
 
 float droneInfo[6] = {0.0};
+char droneInfo_str[40];
 
 int mode = MENU;   
 int disp = CHOOSENAME;
@@ -72,6 +73,10 @@ WINDOW* control;
 
 FILE *settingsfile;
 FILE *file;
+
+Drone_bb drone = {0, 0};
+Force force = {0, 0};
+Speed speed = {0, 0};
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
@@ -383,8 +388,11 @@ void drawInfo() {
     for (int i = 0; i < 6; i++) {
 
         // Formatta il numero in una stringa
-        snprintf(droneInfoStr[i], sizeof(droneInfoStr[i]), "%.2f", droneInfo[i]);
-
+        if(i < 2){
+            snprintf(droneInfoStr[i], sizeof(droneInfoStr[i]), "%d", (int)droneInfo[i]);
+        }else{
+            snprintf(droneInfoStr[i], sizeof(droneInfoStr[i]), "%.3f", droneInfo[i]);
+        }
         // Calcola le lunghezze effettive delle stringhe
         int textLen = strlen(droneInfoText[i]);
         int valueLen = strlen(droneInfoStr[i]);
@@ -638,7 +646,16 @@ int main(int argc, char *argv[]) {
     btnSetUp((int)(((float)nh/2)/2),(int)((((float)nw / 2) - 35)/2));
     mode = PLAY;
     while (1) {
+
         int ch;
+
+        droneInfo[0] = drone.x;
+        droneInfo[1] = drone.y;
+        droneInfo[2] = force.x;
+        droneInfo[3] = force.y;
+        droneInfo[4] = speed.x;
+        droneInfo[5] = speed.y;
+
         if(mode == PLAY){
             fprintf(file,"Mode: PLAY\n");
             fflush(file);
@@ -725,8 +742,22 @@ int main(int argc, char *argv[]) {
                 fflush(file);
                 // Send the message to the blackboard
                 char rec[2];
-                write(fds[askwr],msg,strlen(msg) + 1);
-                read(fds[recrd], &rec, 2);
+                if(write(fds[askwr],msg,strlen(msg) + 1) == -1){
+                    fprintf(file, "[INPUT] Error sending message\n");
+                    fflush(file);
+                }
+                if(read(fds[recrd], &droneInfo_str, sizeof(droneInfo_str)) == -1){
+                    fprintf(file, "[INPUT] Error reading ack\n");
+                    fflush(file);
+                }
+
+                fprintf(file,"Received: %s\n", droneInfo_str);
+                fflush(file);
+
+                sscanf(droneInfo_str, "%d;%d;%f;%f;%f;%f", 
+                        &drone.x, &drone.y, 
+                        &force.x, &force.y, 
+                        &speed.x, &speed.y);
             }  
         }else if(mode == PAUSE){
             char msg [12];

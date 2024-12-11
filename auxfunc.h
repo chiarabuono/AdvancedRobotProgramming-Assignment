@@ -16,7 +16,8 @@
 #define MAX_TARGET 5
 #define MAX_OBSTACLES 10
 #define NO_SPAWN_DIST 5
-#define ETA 0.2
+#define ETA 5
+#define STEP 0.1
 
 #define FORCE_THRESHOLD 5 //[m]
 #define MIN_THRESHOLD 2 //[m]
@@ -42,12 +43,15 @@ typedef struct {
     int y;
 } Drone_bb;
 
-
 typedef struct {
     float x;
     float y;
 } Force;
 
+typedef struct {
+    float x;
+    float y;
+} Speed;
 typedef struct {
     int x[MAX_TARGET];
     int y[MAX_TARGET];
@@ -86,7 +90,8 @@ void fromStringtoForce(Force *force, const char *force_str, FILE *file);
 void fromStringtoPositions(Drone_bb *drone, int *x, int *y, const char *str, FILE *file);
 
 void fromStringtoPositionsWithTwoTargets(int *x1, int *y1, int *x2, int *y2, const char *str, FILE *file);
-
+void fromStringtoDroneInfo(char *input_str, char *drone_str, FILE* file);
+void droneInfotoString(Drone_bb *drone, Force *force, Speed *speed, char *output, size_t output_size, FILE *file);
 
 void fromPositiontoString(int *x, int *y, int len, char *str, size_t str_size, FILE *file);
 void concatenateStr(const char *str1, const char *str2, char *output, size_t output_size, FILE *file);

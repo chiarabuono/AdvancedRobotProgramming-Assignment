@@ -183,13 +183,57 @@ int readSecure(char* filename, char* data, int numeroRiga) {
 }
 
 
-// void fromStringtoDrone(Drone_bb *drone, const char *drone_str, FILE *file) {
-//     if (sscanf(drone_str, "%d;%d", &drone->x, &drone->y) != 2) {
-//         fprintf(file, "Error parsing drone position: %s\n", drone_str);
-//         fflush(file);
-//         exit(EXIT_FAILURE);
+void droneInfotoString(Drone_bb *drone, Force *force, Speed *speed, char *output, size_t output_size, FILE *file) {
+   
+    char drone_str[6];
+    if (drone->x < 10 && drone->y < 10) snprintf(drone_str, sizeof(drone_str), "0%d;0%d", drone->x, drone->y);
+    else if (drone->x < 10) snprintf(drone_str, sizeof(drone_str), "0%d;%d", drone->x, drone->y);
+    else if (drone->y < 10) snprintf(drone_str, sizeof(drone_str), "%d;0%d", drone->x, drone->y);
+    else snprintf(drone_str, sizeof(drone_str), "%d;%d", drone->x, drone->y);
+    
+    char force_str[50];
+    snprintf(force_str, sizeof(force_str), "%.3f;%.3f", force->x, force->y);
+
+//     free(righe);  // Libera l'array di righe
+    char speed_str[50];
+    snprintf(speed_str, sizeof(speed_str), "%.3f;%.3f", speed->x, speed->y);
+
+//     fclose(tmpFile);  // Chiudi il file temporaneo
+    char temp[50];
+    concatenateStr(drone_str, force_str, temp, sizeof(temp), file);
+    concatenateStr(temp, speed_str, output, output_size, file);
+}
+
+void fromStringtoDroneInfo(char *input_str, char *drone_str, FILE *file) {
+    int semicolon_count = 0;
+    size_t i = 0;
+
+//     fflush(file);
+    // Scorri la stringa e cerca il secondo punto e virgola
+    for (; input_str[i] != '\0'; i++) {
+        if (input_str[i] == ';') {
+            semicolon_count++;
+            if (semicolon_count == 2) {
+                break; // Trova il secondo punto e virgola
+            }
+        }
+    }
+
+//     // Sblocca il file
+//     if (flock(fd, LOCK_UN) == -1) {
+//         perror("Errore nello sblocco del file");
+//         fclose(file);
+//         return -1;
 //     }
+    // Copia la parte iniziale (fino al secondo ';') in drone_str
+    strncpy(drone_str, input_str, i);
+    drone_str[i + 1] = '\0'; // Assicura il terminatore della stringa
+    
+
+//     fclose(file);
+//     return 0;
 // }
+}
 
 void fromStringtoDrone(Drone_bb *drone, const char *drone_str, FILE *file) {
     // Buffer temporaneo per contenere numeri di massimo 2 cifre più terminatore '\0'
