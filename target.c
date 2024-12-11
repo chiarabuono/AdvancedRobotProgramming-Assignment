@@ -20,14 +20,7 @@
 // management target
 #define PERIODT 100000
 
-#define EASY 1
-#define HARD 2
-
 int pid;
-float reset_period = 10; // [s]
-float second = 1000000;
-float reset = 0;
-int difficulty;
 int fds[4]; 
 FILE *file;
 
@@ -105,12 +98,6 @@ void targetsMoving(Targets targets) {
 
 void refreshMap(){
 
-    // char lvl[3];
-    // readSecure("log.txt", lvl, 8);
-    // level = atoi(lvl);
-    // numTarget -= level; 
-    // if (numTarget > MAX_TARGET) numTarget = MAX_TARGET;
-       
     if (write(fds[askwr], "R", 2) == -1) {
         perror("[TARGET] Ready not sended correctly\n");
         exit(EXIT_FAILURE);
@@ -149,13 +136,6 @@ void sig_handler(int signo) {
         close(fds[recrd]);
         close(fds[askwr]);
         exit(EXIT_SUCCESS);
-    }
-}
-
-void newMap(int signo){
-    if (signo == SIGUSR2) {
-        reset = 0;
-        refreshMap(); 
     }
 }
 
@@ -200,7 +180,6 @@ int main(int argc, char *argv[]) {
     close(fds[recwr]);
 
     signal(SIGUSR1, sig_handler);
-    signal(SIGUSR2, newMap);
     signal(SIGTERM,sig_handler);
     
     for( int i = 0; i < MAX_TARGET; i++){
@@ -229,27 +208,10 @@ int main(int argc, char *argv[]) {
 
     fprintf(file, "Finish initialization\n");
     fflush(file);
-
-    // char diff[2];
-    // readSecure("log.txt",diff, 2);
-    // difficulty = atoi(diff);
-    // fprintf(file, "Difficulty: %d\n", difficulty);
-    // fflush(file);
     
-    reset = 0;
     while (1) {
-        if(difficulty == HARD){
-            reset += PERIODT/second;
-        }
-        if (reset >= reset_period){
-            reset = 0;
-            refreshMap();
-        }
+        refreshMap();
         // targetsMoving(targets);
         usleep(PERIODT);
     }
-    
-    // Close the file
-    fclose(file);
-    return 0;
 }

@@ -30,6 +30,11 @@
 
 #define PERIODBB 10000  // [us]
 
+#define EASY 1
+#define HARD 2
+
+#define MAPRESET 5 // [s]
+
 int nh, nw;
 float scaleh = 1.0, scalew = 1.0;
 
@@ -69,8 +74,10 @@ char temp[len_str_targets + 2];
 char send_targetobs_str[len_str_obstacles + len_str_targets + 2];
 char droneInfo_str[40];
 
+float resetMap = MAPRESET; // [s]
+int diffic = EASY;
 int score  = 0;
-int levelTime = 10;
+int levelTime = 30;
 float elapsedTime = 0;
 int remainingTime = 0;
 int level = 1;
@@ -721,6 +728,9 @@ int main(int argc, char *argv[]) {
 
     mapInit(file);    
 
+    fprintf(file, "Difficuly: %d\n", diffic);
+    fflush(file);
+
     while (1) {
         
         elapsedTime += PERIODBB/second;
@@ -728,6 +738,33 @@ int main(int argc, char *argv[]) {
 
         if (remainingTime < 0){
             elapsedTime = 0;
+            mvwprintw(map, nh/2, nw/2, "Time's up! Game over!");
+            wrefresh(map);
+            sleep(5);
+
+            for(int j = 0; j < 6; j++){
+                if (j != BLACKBOARD && pids[j] != 0){ 
+                    if (kill(pids[j], SIGTERM) == -1) {
+                    fprintf(file,"Process %d is not responding or has terminated\n", pids[j]);
+                    fflush(file);
+                    }
+
+                    fprintf(file, "Killed process %d\n", pids[j]);
+                    fflush(file);
+                }
+            }
+
+            fprintf(file, "terminating blackboard\n");
+            fflush(file);
+            fclose(file);
+            exit(EXIT_SUCCESS);
+        }
+
+        if(elapsedTime >= resetMap && diffic == HARD){
+            resetMap += MAPRESET;
+            fprintf(file, "Resetting map\n");
+            fflush(file);
+            createNewMap();
         }
 
         if (targetsHit >= numTarget) {
@@ -744,7 +781,6 @@ int main(int argc, char *argv[]) {
             sprintf(levelStr, "%d", level);
             writeSecure("log.txt", levelStr, 8, 'o');
             
-            kill(pids[TARGET], SIGUSR2);
             createNewMap();
         }
 
@@ -764,8 +800,8 @@ int main(int argc, char *argv[]) {
         FD_ZERO(&readfds);
         FD_SET(fds[DRONE][askrd], &readfds);
         FD_SET(fds[INPUT][askrd], &readfds);
-        FD_SET(fds[OBSTACLE][askrd], &readfds);
-        FD_SET(fds[TARGET][askrd], &readfds); 
+        //FD_SET(fds[OBSTACLE][askrd], &readfds);
+        //FD_SET(fds[TARGET][askrd], &readfds); 
 
         
 
