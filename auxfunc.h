@@ -41,6 +41,10 @@ extern int numObstacle;
 typedef struct {
     int x;
     int y;
+    float speedX;
+    float speedY;
+    float forceX;
+    float forceY;
 } Drone_bb;
 
 typedef struct {
@@ -57,12 +61,19 @@ typedef struct {
     int y[MAX_TARGET];
     int value[MAX_TARGET];
 } Targets;
-
 typedef struct
 {
     int x[MAX_OBSTACLES];
     int y[MAX_OBSTACLES];
 } Obstacles;
+
+typedef struct {
+    char msg;
+    int level;
+    Drone_bb drone;
+    Targets targets;
+    Obstacles obstacles;
+} Message;
 
 typedef struct
 {
@@ -84,16 +95,10 @@ extern char jsonBuffer[MAX_FILE_SIZE];
 int writeSecure(char* filename, char* data, int numeroRiga, char mode);
 int readSecure(char* filename, char* data, int numeroRiga);
 void handler(int id, FILE *file);
-
-void fromStringtoDrone(Drone_bb *drone, const char *drone_str, FILE *file);
-void fromStringtoForce(Force *force, const char *force_str, FILE *file);
-void fromStringtoPositions(Drone_bb *drone, int *x, int *y, const char *str, FILE *file);
-
-void fromStringtoPositionsWithTwoTargets(int *x1, int *y1, int *x2, int *y2, const char *str, FILE *file);
-void fromStringtoDroneInfo(char *input_str, char *drone_str, FILE* file);
-void droneInfotoString(Drone_bb *drone, Force *force, Speed *speed, char *output, size_t output_size, FILE *file);
-
-void fromPositiontoString(int *x, int *y, int len, char *str, size_t str_size, FILE *file);
-void concatenateStr(const char *str1, const char *str2, char *output, size_t output_size, FILE *file);
+void msgUnpack(Message* msgIn, Message* msgOut);
+void writeMsg(int pipeFds, Message* msg, char* error, FILE* file);
+void readMsg(int pipeFds, Message* msgIn, Message* msgOut, char* error, FILE* file);
+void fdsRead (int argc, char* argv[], int fds[]);
+int writePid(char* file, char* mode);
 
 #endif
