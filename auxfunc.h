@@ -13,8 +13,8 @@
 #define WINDOW_WIDTH 100
 #define WINDOW_LENGTH 100
 
-#define MAX_TARGET 5
-#define MAX_OBSTACLES 10
+#define MAX_TARGET 20
+#define MAX_OBSTACLES 20
 #define NO_SPAWN_DIST 5
 #define ETA 5
 #define STEP 0.1
@@ -76,10 +76,19 @@ typedef struct {
     Obstacles obstacles;
 } Message;
 
+typedef struct{
+    char msg;
+    char name[MAX_LINE_LENGTH];
+    char input[10];
+    int difficulty;
+    int level;
+    Drone_bb droneInfo;
+} inputMessage;
+
 typedef struct
 {
-    char playerName[100];
-    char difficulty[100];
+    char playerName[MAX_LINE_LENGTH];
+    char difficulty[MAX_LINE_LENGTH];
     int startingLevel;
     int defbtn[9];
 } Config;
@@ -99,6 +108,9 @@ void handler(int id, FILE *file);
 void msgUnpack(Message* msgIn, Message* msgOut);
 void writeMsg(int pipeFds, Message* msg, char* error, FILE* file);
 void readMsg(int pipeFds, Message* msgIn, Message* msgOut, char* error, FILE* file);
+void writeInputMsg(int pipeFds, inputMessage* msg, char* error, FILE* file);
+void readInputMsg(int pipeFds, inputMessage* msgIn, inputMessage* msgOut, char* error, FILE* file);
+void inputMsgUnpack(inputMessage* msgIn, inputMessage* msgOut);
 void fdsRead (int argc, char* argv[], int* fds);
 int writePid(char* file, char mode, int row, char id);
 

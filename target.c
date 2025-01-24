@@ -32,7 +32,7 @@ char drone_str[80];
 char str[len_str_targets];
 
 int canSpawnPrev(int x_pos, int y_pos, Targets targets) {
-    for (int i = 0; i < numTarget; i++) {
+    for (int i = 0; i < numTarget + status.level; i++) {
         if (abs(x_pos - targets.x[i]) <= NO_SPAWN_DIST && abs(y_pos - targets.y[i]) <= NO_SPAWN_DIST) return 0;
     }
     return 1;
@@ -42,12 +42,14 @@ Targets createTargets(Drone_bb drone) {
     Targets targets;
     int x_pos, y_pos;
 
+    //Targets init
     for( int i = 0; i < MAX_TARGET; i++){
         targets.x[i] = 0;
         targets.y[i] = 0;
+        targets.value[i] = 0;
     }
 
-    for (int i = 0; i < numTarget; i++)
+    for (int i = 0; i < numTarget + status.level; i++)
     {
         do{
             x_pos = rand() % (WINDOW_LENGTH-1);
@@ -66,7 +68,7 @@ Targets createTargets(Drone_bb drone) {
 
 void targetsMoving(Targets targets) {
     int num_moves = sizeof(moves) / sizeof(moves[0]);
-    for (int i = 0; i < numTarget; i++) {
+    for (int i = 0; i < numTarget + status.level; i++) {
         const char* move = moves[rand() % num_moves];
 
         int up_condition = (targets.y[i] > 1);
@@ -150,13 +152,6 @@ int main(int argc, char *argv[]) {
     //Defining signals
     signal(SIGUSR1, sig_handler);
     signal(SIGTERM,sig_handler);
-    
-    //Targets init
-    for( int i = 0; i < MAX_TARGET; i++){
-        status.targets.x[i] = 0;
-        status.targets.y[i] = 0;
-        status.targets.value[i] = i+1;
-    }
 
     fprintf(file, "Ready to read the drone position\n");
     fflush(file);
@@ -170,7 +165,7 @@ int main(int argc, char *argv[]) {
     status.targets = createTargets(status.drone);             // Create target vector
 
     for(int i = 0; i < MAX_TARGET; i++ ){
-        fprintf(file, "obst[%d] = %d,%d,%d\n", i, status.targets.x[i], status.targets.y[i], status.targets.value[i]);
+        fprintf(file, "targ[%d] = %d,%d,%d\n", i, status.targets.x[i], status.targets.y[i], status.targets.value[i]);
         fflush(file);
     }
 

@@ -58,7 +58,6 @@ char *menuBtn[2] = {"Press P to pause", "Press Q to quit"};
 int pid;
 int fds[4]; 
 
-char name[50] = ""; // Buffer per il testo
 int level = 0;
 
 float droneInfo[6] = {0.0};
@@ -78,6 +77,11 @@ Drone_bb drone = {0, 0};
 Force force = {0, 0};
 Speed speed = {0, 0};
 
+inputMessage inputMsg;
+inputMessage inputStatus;
+Message msg;
+Message status;
+
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
         handler(INPUT, file);
@@ -91,6 +95,23 @@ void sig_handler(int signo) {
     }
 }
 
+void printInputMessageToFile(FILE *file, inputMessage msg) {
+    fprintf(file, "\n");
+    fprintf(file, "msg: %c\n", msg.msg);
+    fprintf(file, "name: %s\n", msg.name);
+    fprintf(file, "input: %s\n", msg.input);
+    fprintf(file, "difficulty: %d\n", msg.difficulty);
+    fprintf(file, "level: %d\n", msg.level);
+    fprintf(file, "droneInfo:\n");
+    fprintf(file, "  x: %d\n", msg.droneInfo.x);
+    fprintf(file, "  y: %d\n", msg.droneInfo.y);
+    fprintf(file, "  speedX: %.2f\n", msg.droneInfo.speedX);
+    fprintf(file, "  speedY: %.2f\n", msg.droneInfo.speedY);
+    fprintf(file, "  forceX: %.2f\n", msg.droneInfo.forceX);
+    fprintf(file, "  forceY: %.2f\n", msg.droneInfo.forceY);
+    fflush(file);
+}
+
 void btnSetUp (int row, int col){
 
     for(int i = 0; i < BUTTONS; i++){
@@ -99,38 +120,6 @@ void btnSetUp (int row, int col){
         winBut[i] = newwin(BTNSIZER, BTNSIZEC, newRow, newCol);
     }
 }
-
-// void drawBtn(int b, int mode) {
-//     char *text[9] = {};
-//     for(int i = 0; i < 9; i++){
-//         text[i] = default_text[i];
-//     }
-//     if(mode == MENU){
-//         for(int i = 0; i < 9; i++){
-//             text[i] = menu_text[i];
-//         }
-//     }
-
-//     char btn[10] = "";
-//     for (int i = 0; i < BUTTONS; i++) {
-//         strcpy(btn, text[i]);
-//         werase(winBut[i]);
-//         // Calcolo della posizione centrata
-//         int r = 2; // Riga centrale
-//         int c = (BTNSIZEC - strlen(btn)) / 2; // Colonna centrata
-
-//         // Stampa del testo centrato nel pulsante
-//         if(i == b){
-//           wattron(winBut[i], COLOR_PAIR(1));  
-//         }
-//         box(winBut[i], 0, 0); // Disegna il bordo del pulsante
-//         mvwprintw(winBut[i], r, c, "%s", btn);
-//         wrefresh(winBut[i]); // Aggiorna la finestra
-//         if(i == b){
-//           wattroff(winBut[i], COLOR_PAIR(1));  
-//         }
-//     }
-// }
 
 void drawBtn(int b) {
     char btn[10] = ""; // Stringa per ogni pulsante
@@ -170,7 +159,7 @@ void drawName(){
     werase(stdscr);
     box(stdscr, 0, 0);
     mvwprintw(stdscr, prompt_row, (nw - strlen(prompt)) / 2, "%s", prompt);
-    mvwprintw(stdscr, name_row, (nw - strlen(name)) / 2, "%s", name);
+    mvwprintw(stdscr, name_row, (nw - strlen(inputStatus.name)) / 2, "%s", inputStatus.name);
     wrefresh(stdscr);
 }
 
@@ -184,10 +173,11 @@ void setName() {
     const int error_row = nh / 2 + 2; // Riga per i messaggi di errore
 
     mvwprintw(stdscr, prompt_row, (nw - strlen(prompt)) / 2, "%s", prompt);
+    mvwprintw(stdscr, name_row, (nw - strlen(inputStatus.name)) / 2, "%s", inputStatus.name);
     wrefresh(stdscr);
 
     int ch = 0;
-    int pos = 0;
+    int pos = strlen(inputStatus.name); // Inizializza la posizione in base alla lunghezza del nome esistente
 
     while (ch != MY_KEY_ENTER) {
         ch = getch(); // Legge il prossimo carattere premuto
@@ -196,12 +186,15 @@ void setName() {
             // Backspace: rimuove l'ultimo carattere se possibile
             if (pos > 0) {
                 pos--;
-                name[pos] = '\0'; // Termina correttamente la stringa
+                inputStatus.name[pos] = '\0'; // Termina correttamente la stringa
             }
         } else if (ch >= 32 && ch <= 126) { // Solo caratteri stampabili
-            if (pos < sizeof(name) - 1) {
-                name[pos++] = ch;
-                name[pos] = '\0';
+            if (pos < sizeof(inputStatus.name) - 1 && pos < MAX_LINE_LENGTH - 1) {
+                inputStatus.name[pos++] = ch;
+                inputStatus.name[pos] = '\0';
+            } else if (pos >= MAX_LINE_LENGTH - 1) {
+                // Mostra messaggio di errore per superamento lunghezza massima
+                mvwprintw(stdscr, error_row, (nw - strlen("Name too long, try again.")) / 2, "%s", "Name too long, try again.");
             }
         } else {
             // Mostra messaggio di errore per tasto non valido
@@ -209,14 +202,18 @@ void setName() {
         }
 
         // Ridisegna lo schermo
-        drawName();
+        werase(stdscr);
+        box(stdscr, 0, 0);
+        mvwprintw(stdscr, prompt_row, (nw - strlen(prompt)) / 2, "%s", prompt);
+        mvwprintw(stdscr, name_row, (nw - strlen(inputStatus.name)) / 2, "%s", inputStatus.name);
+        wrefresh(stdscr);
     }
 
     // Mostra il nome inserito e termina
     werase(stdscr);
     box(stdscr, 0, 0);
     char confirmation[100];
-    snprintf(confirmation, sizeof(confirmation), "Name set: %s", name);
+    snprintf(confirmation, sizeof(confirmation), "Name set: %s", inputStatus.name);
     mvwprintw(stdscr, nh / 2, (nw - strlen(confirmation)) / 2, "%s", confirmation);
     wrefresh(stdscr);
 }
@@ -255,11 +252,9 @@ void setDifficulty(){
     while (ch != 49 && ch != 50) {
         ch = getch();
         if(ch == 49){
-            level = 1;
-            writeSecure("log.txt", "1", 2, 'o');
+            inputStatus.difficulty = 1;
         }else if(ch == 50){
-            level = 2;
-            writeSecure("log.txt", "2", 2, 'o');
+            inputStatus.difficulty = 2;
         }
         drawDifficulty();
         usleep(10000); 
@@ -277,6 +272,7 @@ int keyAlreadyUsed(int key, int index ){
     }
     return 0;
 }
+
 void setBtns(){
     werase(stdscr);
     box(stdscr, 0, 0);
@@ -340,6 +336,7 @@ void pauseMenu(){
 }
  
 void mainMenu(){
+   
     mode = MENU;
     disp = CHOOSENAME;
     setName();
@@ -351,31 +348,29 @@ void mainMenu(){
     werase(stdscr);
     wrefresh(stdscr);
 
-    char settings[50] = {0};
-    strcat(settings,name);
-    char levelChoose [4];
-    snprintf(levelChoose, sizeof(levelChoose), ";%d", level);
-    strcat(settings, levelChoose);
-    fprintf(file,"\nSettings: %s\n", settings);
-    fflush(file);
+    inputStatus.msg = 'A';
+    strncpy(inputStatus.input, "left", 10);
+    printInputMessageToFile(file, inputStatus);
 
-    if(write(fds[askwr],settings,strlen(settings) + 1) == -1){
-        fprintf(file, "Error sending settings\n");
-        fflush(file);     
-    }
+    writeInputMsg(fds[askwr], &inputStatus, 
+                "Error sending settings", file);
 
-    char rec[2];
-    if(read(fds[recrd], &rec, 2) == -1){
-        fprintf(file, "Error reading ack");
-        fflush(file);
-    }
-    if(rec[0] == 'A'){
+    readInputMsg(fds[recrd], &inputMsg, &inputStatus, 
+                "Error reading ack", file);
+
+    if(inputStatus.msg == 'A'){
         fprintf(file, "Ack received\n");
         fflush(file);
     }else{
         fprintf(file, "Error receiving ack\n");
         fflush(file);
     }
+
+    readInputMsg(fds[recrd], &inputMsg, &inputStatus, 
+                "Error reading drone info", file);
+    
+    printInputMessageToFile(file, inputStatus);
+
 }
 
 void drawInfo() {
@@ -387,11 +382,25 @@ void drawInfo() {
 
     for (int i = 0; i < 6; i++) {
 
-        // Formatta il numero in una stringa
-        if(i < 2){
-            snprintf(droneInfoStr[i], sizeof(droneInfoStr[i]), "%d", (int)droneInfo[i]);
-        }else{
-            snprintf(droneInfoStr[i], sizeof(droneInfoStr[i]), "%.3f", droneInfo[i]);
+        switch (i) {
+            case 0:
+                snprintf(droneInfoStr[i], sizeof(droneInfoStr[i]), "%d", inputStatus.droneInfo.x);
+                break;
+            case 1:
+                snprintf(droneInfoStr[i], sizeof(droneInfoStr[i]), "%d", inputStatus.droneInfo.y);
+                break;
+            case 2:
+                snprintf(droneInfoStr[i], sizeof(droneInfoStr[i]), "%.3f", inputStatus.droneInfo.speedX);
+                break;
+            case 3:
+                snprintf(droneInfoStr[i], sizeof(droneInfoStr[i]), "%.3f", inputStatus.droneInfo.speedY);
+                break;
+            case 4:
+                snprintf(droneInfoStr[i], sizeof(droneInfoStr[i]), "%.3f", inputStatus.droneInfo.forceX);
+                break;
+            case 5:
+                snprintf(droneInfoStr[i], sizeof(droneInfoStr[i]), "%.3f", inputStatus.droneInfo.forceY);
+                break;
         }
         // Calcola le lunghezze effettive delle stringhe
         int textLen = strlen(droneInfoText[i]);
@@ -535,6 +544,7 @@ void resizeHandler(int sig){
 }
 
 void readConfig(){
+    
     fprintf(file,"Reading configuration file\n");
     fflush(file);
 
@@ -546,14 +556,14 @@ void readConfig(){
     if (json == NULL){
         perror("Error parsing the file");
     }
-    conf_ptr gameConfig = malloc(sizeof(conf_ptr)); // allocate memory dinamically
-    
-    strcpy(gameConfig->difficulty, cJSON_GetObjectItemCaseSensitive(json, "Difficulty")->valuestring);
-    strcpy(gameConfig->playerName, cJSON_GetObjectItemCaseSensitive(json, "PlayerName")->valuestring);
-    gameConfig->startingLevel = cJSON_GetObjectItemCaseSensitive(json, "StartingLevel")->valueint;
 
-    //for array
-    cJSON *numbersArray = cJSON_GetObjectItemCaseSensitive(json, "DefaultBTN");//this is an array
+    // Salva i dati direttamente in inputStatus
+    strcpy(inputStatus.name, cJSON_GetObjectItemCaseSensitive(json, "PlayerName")->valuestring);
+    inputStatus.difficulty = cJSON_GetObjectItemCaseSensitive(json, "Difficulty")->valueint;
+    inputStatus.level = cJSON_GetObjectItemCaseSensitive(json, "StartingLevel")->valueint;
+
+    // Per array
+    cJSON *numbersArray = cJSON_GetObjectItemCaseSensitive(json, "DefaultBTN"); // questo è un array
     int arraySize = cJSON_GetArraySize(numbersArray);
     fprintf(file,"Array size: %d\n", arraySize);
     fflush(file);
@@ -564,16 +574,16 @@ void readConfig(){
     for (int i = 0; i < arraySize; ++i) {
         cJSON *element = cJSON_GetArrayItem(numbersArray, i);
         if (cJSON_IsNumber(element)) {
-            fprintf(file,"%d,",btnValues[i] = element->valueint);
+            fprintf(file,"%d,", btnValues[i] = element->valueint);
             fflush(file);
         }
     }
 
-    cJSON_Delete(json);//clean
+    cJSON_Delete(json); // pulisci
     
-    free(gameConfig);//malloc --> clean //delete the memory dinamically allocated
-
+    // Non è più necessario liberare gameConfig
 }
+
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -671,57 +681,47 @@ int main(int argc, char *argv[]) {
                 wrefresh(control);   
                 drawBtn(99); //to make all the buttons white
                 drawInfo();
-            }else {
-                //message to bb init
-                char msg [12];
-
-                for(int i = 0; i < 12; i++){
-                    msg[i] = '\0';
-                }
+            }else {             
                 
-                msg[0] = 'I';
-                msg[1] = ';';
-
-                //Refresh the auxiliary window
-                
-
+                inputStatus.msg = 'I';
                 int btn;
-                
+
+            
                 // int ch = 99;
                 if (ch == btnValues[0]) {
                     btn = LEFTUP;
-                    strcat(msg, moves[btn]);
+                    strcpy(inputStatus.input, moves[btn]);
                 } else if (ch == btnValues[1]) {
                     btn = UP;
-                    strcat(msg, moves[btn]);
+                    strcpy(inputStatus.input, moves[btn]);
                 } else if (ch == btnValues[2]) {
                     btn = RIGHTUP;
-                    strcat(msg, moves[btn]);
+                    strcpy(inputStatus.input, moves[btn]);
                 } else if (ch == btnValues[3]) {
                     btn = LEFT;
-                    strcat(msg, moves[btn]);
+                    strcpy(inputStatus.input, moves[btn]);
                 } else if (ch == btnValues[4]) {
                     btn = CENTER;
-                    strcat(msg, moves[btn]);
+                    strcpy(inputStatus.input, moves[btn]);
                 } else if (ch == btnValues[5]) {
                     btn = RIGHT;
-                    strcat(msg, moves[btn]);
+                    strcpy(inputStatus.input, moves[btn]);
                 } else if (ch == btnValues[6]) {
                     btn = LEFTDOWN;
-                    strcat(msg, moves[btn]);
+                    strcpy(inputStatus.input, moves[btn]);
                 } else if (ch == btnValues[7]) {
                     btn = DOWN;
-                    strcat(msg, moves[btn]);
+                    strcpy(inputStatus.input, moves[btn]);
                 } else if (ch == btnValues[8]) {
                     btn = RIGHTDOWN;
-                    strcat(msg, moves[btn]);
+                    strcpy(inputStatus.input, moves[btn]);
                 }else if (ch == MY_KEY_p || ch == MY_KEY_P){
                     btn = 112; //Pause
-                    strcat(msg, "P");
+                    inputStatus.msg = 'P';
                     mode = PAUSE;
                 } else if (ch == MY_KEY_q || ch == MY_KEY_Q){
                     btn = 109; //Quit
-                    strcat(msg, "q");
+                    inputStatus.msg = 'q';
                     fprintf(file,"sending quit: %s\n",msg);
                     fflush(file);
                 }else{
@@ -738,36 +738,21 @@ int main(int argc, char *argv[]) {
                 wrefresh(win);
                 drawBtn(99); //to make all the buttons white
 
-                fprintf(file,"msg: %s\n", msg);
-                fflush(file);
+                fprintf(file, "Sending:\n");
+                printInputMessageToFile(file, inputStatus);
+
                 // Send the message to the blackboard
-                char rec[2];
-                if(write(fds[askwr],msg,strlen(msg) + 1) == -1){
-                    fprintf(file, "[INPUT] Error sending message\n");
-                    fflush(file);
-                }
-                if(read(fds[recrd], &droneInfo_str, sizeof(droneInfo_str)) == -1){
-                    fprintf(file, "[INPUT] Error reading ack\n");
-                    fflush(file);
-                }
+                
+                writeInputMsg(fds[askwr], &inputStatus, 
+                            "[INPUT] Error sending message", file);
 
-                fprintf(file,"Received: %s\n", droneInfo_str);
-                fflush(file);
-
-                sscanf(droneInfo_str, "%d;%d;%f;%f;%f;%f", 
-                        &drone.x, &drone.y, 
-                        &force.x, &force.y, 
-                        &speed.x, &speed.y);
+                readInputMsg(fds[recrd], &inputMsg, &inputStatus, 
+                            "Error reading ack", file);
+                
+                fprintf(file,"Received:\n");
+                printInputMessageToFile(file, inputStatus);
             }  
         }else if(mode == PAUSE){
-            char msg [12];
-
-            for(int i = 0; i < 12; i++){
-                msg[i] = '\0';
-            }
-            
-            msg[0] = 'I';
-            msg[1] = ';';
 
             fprintf(file,"Mode: PAUSE\n");
             fflush(file);
@@ -779,17 +764,20 @@ int main(int argc, char *argv[]) {
             if(ch == MY_KEY_P || ch == MY_KEY_p){
                 wrefresh(stdscr);
                 mode = PLAY;
-                strcat(msg, "P");
+                inputStatus.msg = 'P';
                 fprintf(file,"sending play: %s\n",msg);
                 fflush(file);
-                write(fds[askwr],msg,strlen(msg) + 1);
+
+                 writeInputMsg(fds[askwr], &inputStatus, 
+                            "[INPUT] Error sending play", file);
+
             }else if(ch == MY_KEY_Q || ch == MY_KEY_q){
                 wrefresh(stdscr);
-                strcat(msg, "q");
+                inputStatus.msg = 'q';
                 fprintf(file,"sending quit: %s\n",msg);
                 fflush(file);
-                write(fds[askwr],msg,strlen(msg) + 1);
-                
+                writeInputMsg(fds[askwr], &inputStatus, 
+                            "[INPUT] Error sending quit", file);
             }
         }
 

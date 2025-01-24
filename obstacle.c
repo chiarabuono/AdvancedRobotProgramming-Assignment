@@ -43,14 +43,14 @@ void sig_handler(int signo) {
 }
 
 int canSpawn(int x_pos, int y_pos, Targets targets) {
-    for (int i = 0; i < numTarget; i++) {
+    for (int i = 0; i < numTarget + status.level; i++) {
         if (abs(x_pos - targets.x[i]) <= NO_SPAWN_DIST && abs(y_pos - targets.y[i]) <= NO_SPAWN_DIST) return 0; 
     }
     return 1;
 }
 
 int canSpawnPrev(int x_pos, int y_pos, Obstacles obstacles) {
-    for (int i = 0; i < numTarget; i++) {
+    for (int i = 0; i < numTarget + status.level; i++) {
         if (abs(x_pos - obstacles.x[i]) <= NO_SPAWN_DIST && abs(y_pos - obstacles.y[i]) <= NO_SPAWN_DIST) return 0;
     }
     return 1;
@@ -65,7 +65,7 @@ Obstacles createObstacles(Drone_bb drone, Targets targets) {
         obstacles.y[i] = 0;
     }
     
-    for (int i = 0; i < numObstacle; i++)
+    for (int i = 0; i < numObstacle + status.level; i++)
     {
         do{
             x_pos = rand() % (WINDOW_LENGTH-1);
@@ -116,6 +116,11 @@ int main(int argc, char *argv[]) {
 
         status.obstacles = createObstacles(status.drone, status.targets);
 
+        fprintf(file, "Obstacle created:\n");
+        for(int i = 0; i < MAX_TARGET; i++ ){
+        fprintf(file, "obst[%d] = %d,%d\n", i, status.obstacles.x[i], status.obstacles.y[i]);
+        fflush(file);
+    }
         writeMsg(fds[askwr], &status, 
             "[OBSTACLE] Error sending obstacle positions to [BB]", file);
 

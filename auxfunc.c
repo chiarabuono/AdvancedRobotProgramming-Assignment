@@ -8,8 +8,8 @@
 #include "auxfunc.h"
 #include <time.h>
 
-int numTarget = 5;
-int numObstacle = 10;
+int numTarget = 4;
+int numObstacle = 9;
 
 const char *moves[] = {"upleft", "up", "upright", "left", "center", "right", "downleft", "down", "downright"};
 char jsonBuffer[MAX_FILE_SIZE];
@@ -185,6 +185,7 @@ int readSecure(char* filename, char* data, int numeroRiga) {
 void msgUnpack(Message* msgIn, Message* msgOut){
     msgOut->msg = msgIn->msg;
     msgOut->level = msgIn->level;
+    msgOut->difficulty = msgIn->difficulty;
     msgOut->drone = msgIn->drone;
     msgOut->targets = msgIn->targets;
     msgOut->obstacles = msgIn->obstacles;
@@ -199,6 +200,17 @@ void writeMsg(int pipeFds, Message* msg, char* error, FILE* file){
     }  
 }
 
+void inputMsgUnpack(inputMessage* msgIn, inputMessage* msgOut) {
+    msgOut->msg = msgOut->msg;
+    strncpy(msgOut->name, msgIn->name, MAX_LINE_LENGTH);
+    strncpy(msgOut->input, msgIn->input, sizeof(msgOut->input));
+    msgOut->difficulty = msgIn->difficulty;
+    msgOut->level = msgIn->level;
+    msgOut->droneInfo = msgIn->droneInfo;
+}
+
+
+
 void readMsg(int pipeFds, Message* msgIn, Message* msgOut, char* error, FILE* file){
     if (read(pipeFds, msgIn, sizeof(Message)) == -1){
         fprintf(file, "Errore%s\n", error);
@@ -210,6 +222,24 @@ void readMsg(int pipeFds, Message* msgIn, Message* msgOut, char* error, FILE* fi
     msgUnpack(msgIn, msgOut);
 }
 
+void writeInputMsg(int pipeFds, inputMessage* msg, char* error, FILE* file){
+    if (write(pipeFds, msg, sizeof(inputMessage)) == -1) {
+        fprintf(file,"Errore%s\n", error);
+        fflush(file);
+        perror(error);
+        exit(EXIT_FAILURE);
+    }  
+}
+void readInputMsg(int pipeFds, inputMessage* msgIn, inputMessage* msgOut, char* error, FILE* file){
+    if (read(pipeFds, msgIn, sizeof(inputMessage)) == -1){
+        fprintf(file, "Errore%s\n", error);
+        fflush(file);
+        perror(error);
+        exit(EXIT_FAILURE);
+    }
+
+    inputMsgUnpack(msgIn, msgOut);
+}
 
 void fdsRead (int argc, char* argv[], int* fds){
     if (argc < 2) {

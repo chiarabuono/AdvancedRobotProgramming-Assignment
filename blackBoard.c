@@ -53,15 +53,18 @@ WINDOW * map;
 FILE *file;
 FILE *conffile;
 
-Message status;
+
 Drone_bb prevDrone = {0, 0};
 
+Message status;
 Message msg;
+inputMessage inputMsg;
+inputMessage inputStatus;
+
 Config config;
 
 int pids[6] = {0};  // Initialize PIDs to 0
 
-int mask[MAX_TARGET] = {0};
 int collision = 0;
 int targetsHit = 0;
 
@@ -71,9 +74,7 @@ int score  = 0;
 int levelTime = 30;
 float elapsedTime = 0;
 int remainingTime = 0;
-int level = 1;
-char name[20];
-char diff[10];
+char difficultyStr[10];
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
@@ -115,9 +116,9 @@ void resizeHandler(int sig){
 }
 
 void mapInit(FILE *file){
-    fprintf(file, "\n--------------------\n");
+    fprintf(file, "\n-------------------\n");
     fprintf(file, "MAP INITIALIZATION\n");
-    fprintf(file, "--------------------\n");
+    fprintf(file, "-------------------\n");
     fprintf(file, "Waiting for drone position\n");
     fflush(file);
 
@@ -128,7 +129,7 @@ void mapInit(FILE *file){
     fprintf(file, "Drone updated position: %d,%d\n", status.drone.x, status.drone.y);
     fflush(file);
 
-    status.level = level;
+    status.level = inputStatus.level;
 
     // send drone position to target
     writeMsg(fds[TARGET][recwr], &status, 
@@ -139,6 +140,12 @@ void mapInit(FILE *file){
     readMsg(fds[TARGET][askrd], &msg, &status, 
             "[BB] Error reading target\n", file);
 
+    fprintf(file,"\n");
+    for(int i = 0; i < MAX_TARGET; i++ ){
+        fprintf(file, "targ[%d] = %d,%d,%d\n", i, status.targets.x[i], status.targets.y[i], status.targets.value[i]);
+        fflush(file);
+    }
+
     // send drone and target position to obstacle
     writeMsg(fds[OBSTACLE][recwr], &status, 
             "[BB] Error sending drone and target position to [OBSTACLE]\n", file);
@@ -146,10 +153,27 @@ void mapInit(FILE *file){
     // receiving obstacle position
     readMsg(fds[OBSTACLE][askrd], &msg, &status, 
             "[BB] Error reading obstacles positions\n", file);
-    
+    fprintf(file,"\n");
+    for(int i = 0; i < MAX_OBSTACLES; i++ ){
+        fprintf(file, "obst[%d] = %d,%d\n", i, status.obstacles.x[i], status.obstacles.y[i]);
+        fflush(file);
+    }
+
     //Update drone position
     writeMsg(fds[DRONE][recwr], &status, 
             "[BB] Error sending updated map\n", file);
+    
+    fprintf(file, "Drone updated position: %d,%d\n", status.drone.x, status.drone.y);
+    fflush(file);
+
+    inputStatus.droneInfo = status.drone;
+    inputStatus.msg = '\0';
+    writeInputMsg(fds[INPUT][recwr], &inputStatus, 
+                "Error sending ack", file);
+
+    fprintf(file, "\n--------------------------\n");
+    fprintf(file, "MAP INITIALIZATION FINISHED\n");
+    fprintf(file, "----------------------------\n");
 }
 
 void drawDrone(WINDOW * win){
@@ -169,7 +193,7 @@ void drawDrone(WINDOW * win){
 void drawObstacle(WINDOW * win){
     wattron(win, A_BOLD); // Attiva il grassetto
     wattron(win, COLOR_PAIR(2)); 
-    for(int i = 0; i < MAX_OBSTACLES; i++){
+    for(int i = 0; i < numObstacle + status.level; i++){
         mvwprintw(win, (int)(status.obstacles.y[i]*scaleh), (int)(status.obstacles.x[i]*scalew), "0");
     }
     wattroff(win, COLOR_PAIR(2)); 
@@ -179,7 +203,7 @@ void drawObstacle(WINDOW * win){
 void drawTarget(WINDOW * win) {
     wattron(win, A_BOLD); // Attiva il grassetto
     wattron(win, COLOR_PAIR(3)); 
-    for(int i = 0; i < MAX_TARGET; i++){
+    for(int i = 0; i < numTarget + status.level; i++){
         if (status.targets.value[i] == 0) continue;
         char val_str[2];
         sprintf(val_str, "%d", status.targets.value[i]); // Converte il valore in stringa
@@ -196,13 +220,13 @@ void drawMenu(WINDOW* win) {
     // Preparazione delle stringhe
     char score_str[10], diff_str[10], time_str[10], level_str[10];
     sprintf(score_str, "%d", score);
-    sprintf(diff_str, "%s", diff);
+    sprintf(diff_str, "%s", difficultyStr);
     sprintf(time_str, "%d", remainingTime);
-    sprintf(level_str, "%d", level);
+    sprintf(level_str, "%d", status.level);
 
     // Array con le etichette e i valori corrispondenti
     const char* labels[] = { "Score: ", "Player: ", "Difficulty: ", "Time: ", "Level: " };
-    const char* values[] = { score_str, name, diff_str, time_str, level_str };
+    const char* values[] = { score_str, inputStatus.name, diff_str, time_str, level_str };
 
     int num_elements = 5; // Numero di elementi nel menu
 
@@ -252,9 +276,9 @@ int randomSelect(int n) {
 
 void detectCollision(Drone_bb* drone, Drone_bb * prev, Targets* targets, FILE* file) {
     //fprintf(file, "PREV(%d, %d), DRONE(%d, %d)\n TARGET:\n", prev->x, prev->y, drone->x, drone->y);
-    for (int i = 0; i < MAX_TARGET; i++) {
+    for (int i = 0; i < numTarget + status.level; i++) {
         //fprintf(file, " (%d, %d)", targets->x[i], targets->y[i]);
-        if (!mask[i] && (((prev->x <= targets->x[i] + 2 && targets->x[i] - 2 <= drone->x)  &&
+        if (!status.targets.value[i] && (((prev->x <= targets->x[i] + 2 && targets->x[i] - 2 <= drone->x)  &&
             (prev->y <= targets->y[i] + 2 && targets->y[i]- 2 <= drone->y) )||
             ((prev->x >= targets->x[i] - 2 && targets->x[i] >= drone->x + 2) &&
             (prev->y >= targets->y[i] - 2 && targets->y[i] >= drone->y + 2) ))){
@@ -317,47 +341,47 @@ void createNewMap(){
     }
 }
 
-void readConf(){
+// void readConf(){
 
-    conffile = fopen("appsettings.json", "r");
+//     conffile = fopen("appsettings.json", "r");
 
-    if (conffile == NULL) {
-        perror("Error opening the file");
-        //return EXIT_FAILURE;//1
-    }
+//     if (conffile == NULL) {
+//         perror("Error opening the file");
+//         //return EXIT_FAILURE;//1
+//     }
 
-    int len = fread(jsonBuffer, 1, sizeof(jsonBuffer), conffile); 
+//     int len = fread(jsonBuffer, 1, sizeof(jsonBuffer), conffile); 
 
-    fclose(conffile);
+//     fclose(conffile);
 
-    cJSON *json = cJSON_Parse(jsonBuffer);// parse the text to json object
+//     cJSON *json = cJSON_Parse(jsonBuffer);// parse the text to json object
 
-    if (json == NULL)
-    {
-        perror("Error parsing the file");
-        //return EXIT_FAILURE;
-    }
+//     if (json == NULL)
+//     {
+//         perror("Error parsing the file");
+//         //return EXIT_FAILURE;
+//     }
 
-    conf_ptr gameConfig = malloc(sizeof(conf_ptr)); // allocate memory dinamically
+//     conf_ptr gameConfig = malloc(sizeof(conf_ptr)); // allocate memory dinamically
     
-    strcpy(gameConfig->difficulty, cJSON_GetObjectItemCaseSensitive(json, "Difficulty")->valuestring);
-    strcpy(gameConfig->playerName, cJSON_GetObjectItemCaseSensitive(json, "PlayerName")->valuestring);
-    gameConfig->startingLevel = cJSON_GetObjectItemCaseSensitive(json, "StartingLevel")->valueint;
+//     strcpy(gameConfig->difficulty, cJSON_GetObjectItemCaseSensitive(json, "Difficulty")->valuestring);
+//     strcpy(gameConfig->playerName, cJSON_GetObjectItemCaseSensitive(json, "PlayerName")->valuestring);
+//     gameConfig->startingLevel = cJSON_GetObjectItemCaseSensitive(json, "StartingLevel")->valueint;
     
-    // fprintf(file, "Player name: %s\n", gameConfig->playerName);
-    // fprintf(file, "Difficulty: %s\n", gameConfig->difficulty);
-    // fprintf(file, "Starting level: %d\n", gameConfig->startingLevel);
-    // fflush(file);
+//     // fprintf(file, "Player name: %s\n", gameConfig->playerName);
+//     // fprintf(file, "Difficulty: %s\n", gameConfig->difficulty);
+//     // fprintf(file, "Starting level: %d\n", gameConfig->startingLevel);
+//     // fflush(file);
 
-    level = gameConfig->startingLevel;
-    strcpy(name, gameConfig->playerName);
-    strcpy(diff, gameConfig->difficulty);
+//     status.level = gameConfig->startingLevel;
+//     strcpy(inputStatus.name, gameConfig->playerName);
+//     strcpy(difficultyStr, gameConfig->difficulty);
 
-    cJSON_Delete(json);//clean
+//     cJSON_Delete(json);//clean
     
-    free(gameConfig);//malloc --> clean //delete the memory dinamically allocated
+//     free(gameConfig);//malloc --> clean //delete the memory dinamically allocated
 
-}
+// }
 
 int main(int argc, char *argv[]) {
 
@@ -486,46 +510,22 @@ int main(int argc, char *argv[]) {
 
     char settings[50]; 
 
+    readInputMsg(fds[INPUT][askrd], &inputMsg, &inputStatus, 
+                "Error reading input", file);
 
-    // if (read(fds[INPUT][askrd], settings, 50) == -1){
-    //     fprintf(file, "Error reading input\n");
-    //     fflush(file);
-    //     exit(EXIT_FAILURE);
-    // }
+    inputStatus.msg = 'A';
+    writeInputMsg(fds[INPUT][recwr], &inputStatus, 
+                "Error sending ack", file);
 
-    // if (write(fds[INPUT][recwr], ack, strlen(ack) + 1) == -1){
-    //     fprintf(file, "Error sending ack\n");
-    //     fflush(file);
-    // }
-
-    // token = strtok(settings, ";");
-    // int diffic;
-    // if (token != NULL) {
-    //     // Copia il primo token (il nome) in name
-    //     strncpy(name, token, sizeof(name));
-    //     name[sizeof(name) - 1] = '\0'; // Assicurati che la stringa sia terminata correttamente
-
-    //     // Prendi il prossimo token (il numero)
-    //     token = strtok(NULL, ";");
-    //     if (token != NULL) {
-    //         // Converti il numero in intero
-    //         diffic = atoi(token);
-    //     } else {
-    //         fprintf(file, "Errore: numero mancante.\n");
-    //     }
-    // } else {
-    //     fprintf(file, "Errore: input non valido.\n");
-    // }
-    
-    // if(diffic == 1){
-    //     status.difficulty = 1;
-    // } else if(diffic == 2){
-    //     status.difficulty = 2;
-    // }
+    if(inputStatus.difficulty == 1){
+        strcpy(difficultyStr,"Easy");
+    } else if(inputStatus.difficulty == 2){
+        strcpy(difficultyStr,"Hard");
+    }
 
     mapInit(file);
-    elapsedTime = 0;
 
+    elapsedTime = 0;
 
     while (1) {
         
@@ -563,18 +563,14 @@ int main(int argc, char *argv[]) {
             createNewMap();
         }
 
-        // if (targetsHit >= numTarget) {
-        //     fprintf(file, "All targets reached\n");
-        //     fflush(file);
-        //     targetsHit = 0;
-        //     collision = 0;
-        //     for (int i = 0; i < MAX_TARGET; i++) {
-        //        status.targets.value[i] = i + 1;
-        //     }
-
-        //     status.level++;            
-        //     createNewMap();
-        // }
+        if (targetsHit >= numTarget) {
+            fprintf(file, "All targets reached\n");
+            fflush(file);
+            targetsHit = 0;
+            collision = 0;
+            status.level++;        
+            createNewMap();
+        }
 
         // Update the main window
         werase(win);
@@ -596,7 +592,6 @@ int main(int argc, char *argv[]) {
         //FD_SET(fds[TARGET][askrd], &readfds); 
 
         
-
         int fdsQueue [4];
         int ready = 0;
 
@@ -627,7 +622,7 @@ int main(int argc, char *argv[]) {
         if(ready > 0){
             unsigned int rand = randomSelect(ready);
             int selected = fdsQueue[rand];
-            //detectCollision(&status.drone, &prevDrone, &status.targets, file);
+            detectCollision(&status.drone, &prevDrone, &status.targets, file);
 
             if (selected == fds[DRONE][askrd]){
                 fprintf(file, "selected drone\n");
