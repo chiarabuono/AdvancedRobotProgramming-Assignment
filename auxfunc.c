@@ -191,8 +191,8 @@ void msgUnpack(Message* msgIn, Message* msgOut){
 }
 
 void writeMsg(int pipeFds, Message* msg, char* error, FILE* file){
-  if (write(pipeFds, &msg, sizeof(Message)) == -1) {
-        fprintf(file,"%s\n", error);
+  if (write(pipeFds, msg, sizeof(Message)) == -1) {
+        fprintf(file,"Errore%s\n", error);
         fflush(file);
         perror(error);
         exit(EXIT_FAILURE);
@@ -200,17 +200,18 @@ void writeMsg(int pipeFds, Message* msg, char* error, FILE* file){
 }
 
 void readMsg(int pipeFds, Message* msgIn, Message* msgOut, char* error, FILE* file){
-    if (read(pipeFds, &msgIn, sizeof(Message)) == -1){
-        fprintf(file, "%s\n", error);
+    if (read(pipeFds, msgIn, sizeof(Message)) == -1){
+        fprintf(file, "Errore%s\n", error);
         fflush(file);
         perror(error);
         exit(EXIT_FAILURE);
     }
 
-    msgUnpack(&msgIn, &msgOut);
+    msgUnpack(msgIn, msgOut);
 }
 
-void fdsRead (int argc, char* argv[], int fds[]){
+
+void fdsRead (int argc, char* argv[], int* fds){
     if (argc < 2) {
         fprintf(stderr, "Uso: %s <fd_str>\n", argv[0]);
         exit(1);
@@ -231,19 +232,20 @@ void fdsRead (int argc, char* argv[], int fds[]){
     }
 }
 
-int writePid(char* file, char* mode){
+int writePid(char* file, char mode, int row, char id){
 
     int pid = (int)getpid();
     char dataWrite[80];
-    snprintf(dataWrite, sizeof(dataWrite), "d%d,", pid);
+    snprintf(dataWrite, sizeof(dataWrite), "%c%d,",id, pid);
 
-    if (writeSecure(file, dataWrite, 1, mode) == -1) {
+    if (writeSecure(file, dataWrite, row, mode) == -1) {
         perror("Error in writing in log.txt");
         exit(1);
     }
 
     return pid;
 }
+
 void handler(int id, FILE *file) {
 
     char log_entry[256];

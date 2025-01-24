@@ -70,6 +70,7 @@ typedef struct
 typedef struct {
     char msg;
     int level;
+    int difficulty;
     Drone_bb drone;
     Targets targets;
     Obstacles obstacles;
@@ -98,7 +99,7 @@ void handler(int id, FILE *file);
 void msgUnpack(Message* msgIn, Message* msgOut);
 void writeMsg(int pipeFds, Message* msg, char* error, FILE* file);
 void readMsg(int pipeFds, Message* msgIn, Message* msgOut, char* error, FILE* file);
-void fdsRead (int argc, char* argv[], int fds[]);
-int writePid(char* file, char* mode);
+void fdsRead (int argc, char* argv[], int* fds);
+int writePid(char* file, char mode, int row, char id);
 
 #endif

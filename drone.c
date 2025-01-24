@@ -222,14 +222,14 @@ void sig_handler(int signo) {
 }
 
 void newDrone (Drone* drone, Targets* targets, Obstacles* obstacles, char* directions, FILE* file, char inst){
-    target_force(&drone, &targets, file);
-    obstacle_force(&drone, &obstacles, file);
+    target_force(drone, targets, file);
+    obstacle_force(drone, obstacles, file);
     if(inst != 'M'){
-        drone_force(&drone, DRONEMASS, K, directions);
+        drone_force(drone, DRONEMASS, K, directions);
     }
     force = total_force(force_d, force_o, force_t, file);
 
-    updatePosition(&drone, force, DRONEMASS, &speed,&speedPrev, file);
+    updatePosition(drone, force, DRONEMASS, &speed,&speedPrev, file);
 }
 
 void droneUpdate(Drone* drone, Speed* speed, Force* force, Message* msg) {
@@ -242,22 +242,45 @@ void droneUpdate(Drone* drone, Speed* speed, Force* force, Message* msg) {
     msg->drone.forceY = force->y;
 }
 
+void mapInit(Drone* drone, Message* status, Message* msg){
+
+    fprintf(file, "Updating drone position\n");
+    fflush(file);
+
+    droneUpdate(drone, &speed, &force, status);
+
+
+    fprintf(file, "Drone updated position: %d,%d\n", status->drone.x, status->drone.y);
+    fflush(file);
+
+    writeMsg(fds[askwr], status, 
+            "[DRONE] Error sending drone info", file);
+    
+    fprintf(file, "Sent drone position\n");
+    fflush(file);
+    
+    readMsg(fds[recrd], msg, status, 
+            "[DRONE] Error receiving map from BB", file);
+}
+
 int main(int argc, char *argv[]) {
     
-    fdsRead(argc, &argv, fds);
+    fdsRead(argc, argv, fds);
 
     // Opening log file
-    if (fopen("outputdrone.txt", "a") == NULL) {
+    file = fopen("outputdrone.txt", "a");
+    if (file == NULL) {
         perror("[DRONE] Error during the file opening");
         exit(EXIT_FAILURE);
     }
 
-    pid = writePid("log.txt", 'a');
+    pid = writePid("log.txt", 'a', 1, 'd');
 
     // Closing unused pipes heads to avoid deadlock
     close(fds[askrd]);
     close(fds[recwr]);
 
+    //Defining signals
     signal(SIGUSR1, sig_handler);
     signal(SIGTERM, sig_handler);
     
@@ -278,26 +301,27 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < MAX_TARGET; i++) {
         targets.x[i] = 0;
         targets.y[i] = 0;
+        status.targets.x[i] = 0;
+        status.targets.y[i] = 0;
     }
 
     for (int i = 0; i < MAX_OBSTACLES; i++) {
         obstacles.x[i] = 0;
         obstacles.y[i] = 0;
+        status.obstacles.x[i] = 0;
+        status.obstacles.y[i] = 0;
     }
 
     char data[200];
 
-    droneUpdate(&drone, &speed, &force, &status);
-
-    writeMsg(fds[askwr], &status, 
-            "[DRONE] Error sending drone info", file);
-
-    readMsg(fds[recrd], &msg, &status, 
-            "[DRONE] Error receiving map from BB", file);
+   mapInit(&drone, &status, &msg);
 
     while (1)
     {
         status.msg = 'R';
+
+        fprintf(file, "Sending ready msg");
+        fflush(file);
 
         writeMsg(fds[askwr], &status, 
             "[DRONE] Ready not sended correctly", file);
@@ -311,7 +335,7 @@ int main(int argc, char *argv[]) {
         
             case 'M':
 
-                newDrone(&status.drone, &status.targets, &status.obstacles, &directions,file,status.msg);
+                newDrone(&drone, &status.targets, &status.obstacles, directions,file,status.msg);
                 droneUpdate(&drone, &speed, &force, &status);
 
                 // drone sends its position to BB
@@ -332,7 +356,7 @@ int main(int argc, char *argv[]) {
                     }
                 strcpy(directions, extractedMsg);
 
-                newDrone(&status.drone, &status.targets, &status.obstacles, &directions,file,status.msg);
+                newDrone(&drone, &status.targets, &status.obstacles, directions,file,status.msg);
                 droneUpdate(&drone, &speed, &force, &status);
 
                 // drone sends its position to BB
@@ -342,9 +366,12 @@ int main(int argc, char *argv[]) {
                 break;
             case 'A':
                 
-                newDrone(&status.drone, &status.targets, &status.obstacles, &directions,file,status.msg);
+                newDrone(&drone, &status.targets, &status.obstacles, directions,file,status.msg);
                 droneUpdate(&drone, &speed, &force, &status);
 
+                fprintf(file, "Drone updated position: %d,%d\n", status.drone.x, status.drone.y);
+                fflush(file);
+                
                 // drone sends its position to BB
                 writeMsg(fds[askwr], &status, 
                         "[DRONE-A] Error sending drone position", file);
