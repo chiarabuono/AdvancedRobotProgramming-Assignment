@@ -84,7 +84,7 @@ Message status;
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
-        handler(INPUT, file);
+        handler(INPUT);
     }else if(signo == SIGTERM){
         fprintf(file, "Input is quitting\n");
         fflush(file);   
@@ -93,23 +93,6 @@ void sig_handler(int signo) {
         close(fds[askwr]);
         exit(EXIT_SUCCESS);
     }
-}
-
-void printInputMessageToFile(FILE *file, inputMessage msg) {
-    fprintf(file, "\n");
-    fprintf(file, "msg: %c\n", msg.msg);
-    fprintf(file, "name: %s\n", msg.name);
-    fprintf(file, "input: %s\n", msg.input);
-    fprintf(file, "difficulty: %d\n", msg.difficulty);
-    fprintf(file, "level: %d\n", msg.level);
-    fprintf(file, "droneInfo:\n");
-    fprintf(file, "  x: %d\n", msg.droneInfo.x);
-    fprintf(file, "  y: %d\n", msg.droneInfo.y);
-    fprintf(file, "  speedX: %.2f\n", msg.droneInfo.speedX);
-    fprintf(file, "  speedY: %.2f\n", msg.droneInfo.speedY);
-    fprintf(file, "  forceX: %.2f\n", msg.droneInfo.forceX);
-    fprintf(file, "  forceY: %.2f\n", msg.droneInfo.forceY);
-    fflush(file);
 }
 
 void btnSetUp (int row, int col){
@@ -264,7 +247,7 @@ void setDifficulty(){
 
 int keyAlreadyUsed(int key, int index ){
     for(int i = 0; i < index + 1; i++){
-        if(btnValues[i] == key || key == MY_KEY_p || key == MY_KEY_q || key == MY_KEY_Q || key == MY_KEY_P){
+        if(key == btnValues[i] || key == MY_KEY_p || key == MY_KEY_q || key == MY_KEY_Q || key == MY_KEY_P){
             mvwprintw(stdscr, 13, 17, "%s", "Key already used");
             wrefresh(stdscr);
             return 1;
@@ -655,6 +638,9 @@ int main(int argc, char *argv[]) {
     mainMenu();
     btnSetUp((int)(((float)nh/2)/2),(int)((((float)nw / 2) - 35)/2));
     mode = PLAY;
+
+    strcpy(inputStatus.input, "reset");
+
     while (1) {
 
         int ch;
@@ -684,9 +670,9 @@ int main(int argc, char *argv[]) {
             }else {             
                 
                 inputStatus.msg = 'I';
-                int btn;
+                strcpy(inputStatus.input, "reset");
 
-            
+                int btn;
                 // int ch = 99;
                 if (ch == btnValues[0]) {
                     btn = LEFTUP;
@@ -762,20 +748,21 @@ int main(int argc, char *argv[]) {
                 usleep(10000);
             }
             if(ch == MY_KEY_P || ch == MY_KEY_p){
+                
                 wrefresh(stdscr);
                 mode = PLAY;
                 inputStatus.msg = 'P';
-                // fprintf(file,"sending play: %s\n",msg);
-                // fflush(file);
+                strcpy(inputStatus.input, "reset");
 
-                 writeInputMsg(fds[askwr], &inputStatus, 
+                writeInputMsg(fds[askwr], &inputStatus, 
                             "[INPUT] Error sending play", file);
 
             }else if(ch == MY_KEY_Q || ch == MY_KEY_q){
+
                 wrefresh(stdscr);
                 inputStatus.msg = 'q';
-                // fprintf(file,"sending quit: %s\n",msg);
-                // fflush(file);
+                strcpy(inputStatus.input, "reset");
+
                 writeInputMsg(fds[askwr], &inputStatus, 
                             "[INPUT] Error sending quit", file);
             }

@@ -31,7 +31,7 @@ FILE *file;
 void sig_handler(int signo) {
     if (signo == SIGUSR1)
     {
-        handler(OBSTACLE, file);
+        handler(OBSTACLE);
     }else if(signo == SIGTERM){
         fprintf(file, "Obstacle is quitting\n");
         fflush(file);   
@@ -65,20 +65,21 @@ Obstacles createObstacles(Drone_bb drone, Targets targets) {
         obstacles.y[i] = 0;
     }
     
-    for (int i = 0; i < numObstacle + status.level; i++)
-    {
-        do{
-            x_pos = rand() % (WINDOW_LENGTH-1);
-            y_pos = rand() % (WINDOW_WIDTH-1);
+    for (int i = 0; i < numObstacle + status.level; i++){
+    
+        do {
+            x_pos = rand() % (WINDOW_LENGTH - 1);
+            y_pos = rand() % (WINDOW_WIDTH - 1);
         } while (
-            (abs(x_pos - drone.x )<= NO_SPAWN_DIST) &&
-            (abs(y_pos - drone.y) <= NO_SPAWN_DIST) || 
-            canSpawn(x_pos, y_pos, targets) == 0||
+            ((abs(x_pos - drone.x) <= NO_SPAWN_DIST) &&
+            (abs(y_pos - drone.y) <= NO_SPAWN_DIST)) || 
+            canSpawn(x_pos, y_pos, targets) == 0 ||
             canSpawnPrev(x_pos, y_pos, obstacles) == 0);
 
         obstacles.x[i] = x_pos;
         obstacles.y[i] = y_pos;
     }
+
     return obstacles;
 }
 

@@ -202,11 +202,12 @@ void writeMsg(int pipeFds, Message* msg, char* error, FILE* file){
 }
 
 void inputMsgUnpack(inputMessage* msgIn, inputMessage* msgOut) {
-    msgOut->msg = msgOut->msg;
+    msgOut->msg = msgIn->msg;
     strncpy(msgOut->name, msgIn->name, MAX_LINE_LENGTH);
     strncpy(msgOut->input, msgIn->input, sizeof(msgOut->input));
     msgOut->difficulty = msgIn->difficulty;
     msgOut->level = msgIn->level;
+    msgOut->score = msgIn->score;
     msgOut->droneInfo = msgIn->droneInfo;
 }
 
@@ -277,7 +278,25 @@ int writePid(char* file, char mode, int row, char id){
     return pid;
 }
 
-void handler(int id, FILE *file) {
+void printInputMessageToFile(FILE *file, inputMessage msg) {
+    fprintf(file, "\n");
+    fprintf(file, "msg: %c\n", msg.msg);
+    fprintf(file, "name: %s\n", msg.name);
+    fprintf(file, "input: %s\n", msg.input);
+    fprintf(file, "difficulty: %d\n", msg.difficulty);
+    fprintf(file, "level: %d\n", msg.level);
+    fprintf(file,"Score: %d\n", msg.score);
+    fprintf(file, "droneInfo:\n");
+    fprintf(file, "  x: %d\n", msg.droneInfo.x);
+    fprintf(file, "  y: %d\n", msg.droneInfo.y);
+    fprintf(file, "  speedX: %.2f\n", msg.droneInfo.speedX);
+    fprintf(file, "  speedY: %.2f\n", msg.droneInfo.speedY);
+    fprintf(file, "  forceX: %.2f\n", msg.droneInfo.forceX);
+    fprintf(file, "  forceY: %.2f\n", msg.droneInfo.forceY);
+    fflush(file);
+}
+
+void handler(int id) {
 
     char log_entry[256];
     time_t rawtime;
@@ -285,7 +304,5 @@ void handler(int id, FILE *file) {
     time(&rawtime);
     timeinfo = localtime(&rawtime);
     strftime(log_entry, sizeof(log_entry), "%H:%M:%S", timeinfo);
-    //fprintf(file, "Process %d received signal from WD at %s\n", id, log_entry);
-    //fflush(file);
     writeSecure("log/log.txt", log_entry, id + 3, 'o');
 }

@@ -51,18 +51,19 @@ Targets createTargets(Drone_bb drone) {
 
     for (int i = 0; i < numTarget + status.level; i++)
     {
-        do{
-            x_pos = rand() % (WINDOW_LENGTH-1);
-            y_pos = rand() % (WINDOW_WIDTH-1);
+        do {
+            x_pos = rand() % (WINDOW_LENGTH - 1);
+            y_pos = rand() % (WINDOW_WIDTH - 1);
         } while (
-            (abs(x_pos - drone.x )<= NO_SPAWN_DIST) &&
-            (abs(y_pos - drone.y) <= NO_SPAWN_DIST) || 
+            ((abs(x_pos - drone.x) <= NO_SPAWN_DIST) &&
+            (abs(y_pos - drone.y) <= NO_SPAWN_DIST)) || 
             canSpawnPrev(x_pos, y_pos, targets) == 0);
 
         targets.x[i] = x_pos;
         targets.y[i] = y_pos;
-        targets.value[i] = i+1;
+        targets.value[i] = i + 1;
     }
+
     return targets;
 }
 
@@ -121,7 +122,7 @@ void refreshMap(){
 
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
-        handler(TARGET, file);
+        handler(TARGET);
     }else if(signo == SIGTERM){
         fprintf(file, "Target is quitting\n");
         fflush(file);   

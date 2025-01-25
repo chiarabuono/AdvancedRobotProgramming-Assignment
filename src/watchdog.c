@@ -45,7 +45,7 @@ void closeAll(int id){
     exit(EXIT_SUCCESS);
 }
 
-int main(int argc, char *argv[]) {
+int main() {
     // Open the output file for writing
     file = fopen("log/outputWD.txt", "w");
     if (file == NULL) {

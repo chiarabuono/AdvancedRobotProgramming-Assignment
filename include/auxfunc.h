@@ -83,6 +83,7 @@ typedef struct{
     char input[10];
     int difficulty;
     int level;
+    int score;
     Drone_bb droneInfo;
 } inputMessage;
 
@@ -105,7 +106,7 @@ extern char jsonBuffer[MAX_FILE_SIZE];
 
 int writeSecure(char* filename, char* data, int numeroRiga, char mode);
 int readSecure(char* filename, char* data, int numeroRiga);
-void handler(int id, FILE *file);
+void handler(int id);
 void msgUnpack(Message* msgIn, Message* msgOut);
 void writeMsg(int pipeFds, Message* msg, char* error, FILE* file);
 void readMsg(int pipeFds, Message* msgIn, Message* msgOut, char* error, FILE* file);
@@ -114,5 +115,6 @@ void readInputMsg(int pipeFds, inputMessage* msgIn, inputMessage* msgOut, char* 
 void inputMsgUnpack(inputMessage* msgIn, inputMessage* msgOut);
 void fdsRead (int argc, char* argv[], int* fds);
 int writePid(char* file, char mode, int row, char id);
+void printInputMessageToFile(FILE *file, inputMessage msg);
 
 #endif
