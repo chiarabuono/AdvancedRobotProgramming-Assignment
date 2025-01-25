@@ -14,6 +14,7 @@
 #include "auxfunc.h"
 #include <signal.h>
 #include <cjson/cJSON.h>
+#include "log.h"
 
 // process to whom that asked or received
 #define askwr 1
@@ -406,6 +407,12 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    FILE *logFile = fopen("log/logfile.log", "w");
+    if (logFile == NULL) {
+        perror("Errore nell'aprire il file di log");
+        return 1;
+    }
+    
     if (argc < 5) {
         fprintf(stderr, "Uso: %s <fd_str[0]> <fd_str[1]> <fd_str[2]> <fd_str[3]>\n", argv[0]);
         exit(1);
@@ -522,8 +529,6 @@ int main(int argc, char *argv[]) {
         fflush(file);
     }
 
-    char settings[50]; 
-
     readInputMsg(fds[INPUT][askrd], &inputMsg, &inputStatus, 
                 "Error reading input", file);
 
@@ -538,6 +543,8 @@ int main(int argc, char *argv[]) {
         strcpy(difficultyStr,"Hard");
         status.difficulty = inputStatus.difficulty;
     }
+
+    LOGCONFIG(inputStatus);
 
     mapInit(file);
 

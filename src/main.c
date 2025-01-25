@@ -54,11 +54,13 @@ int main() {
         }
     }
 
-        FILE *logfile = fopen("log/log.txt", "w");
+    FILE *logfile = fopen("log/log.txt", "w");
     if (logfile == NULL) {
         perror("Errore nell'apertura del file");
         exit(1);
     }
+
+    
 
     pid_t pids[PROCESSNUM];           
 

@@ -38,11 +38,13 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 directories:
 	mkdir -p $(BIN_DIR) $(BUILD_DIR) $(LOG_DIR)
 	rm -f $(LOG_DIR)/*.txt
+	rm -f $(LOG_DIR)/*.log
 
 # Pulisce solo i log
 .PHONY: clean-logs
 clean-logs:
 	rm -f $(LOG_DIR)/*.txt
+	rm -f $(LOG_DIR)/*.log
 
 # Unico bersaglio clean
 .PHONY: clean
