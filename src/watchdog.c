@@ -47,7 +47,7 @@ void closeAll(int id){
 
 int main(int argc, char *argv[]) {
     // Open the output file for writing
-    file = fopen("outputWD.txt", "w");
+    file = fopen("log/outputWD.txt", "w");
     if (file == NULL) {
         perror("Error opening the file");
         exit(1);
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     char dataWrite [80] ;
     snprintf(dataWrite, sizeof(dataWrite), "w%d,", pid);
 
-    if(writeSecure("log.txt", dataWrite,1,'a') == -1){
+    if(writeSecure("log/log.txt", dataWrite,1,'a') == -1){
         perror("Error in writing in log.txt");
         exit(1);
     }
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
     sleep(1);
 
     char datareaded[200];
-    if (readSecure("log.txt", datareaded,1) == -1) {
+    if (readSecure("log/log.txt", datareaded,1) == -1) {
         perror("Error reading the log file");
         exit(1);
     }

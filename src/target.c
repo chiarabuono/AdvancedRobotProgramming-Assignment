@@ -137,13 +137,13 @@ int main(int argc, char *argv[]) {
     fdsRead(argc, argv, fds);
     
     // Opening log file
-    file = fopen("outputtarget.txt", "a");
+    file = fopen("log/outputtarget.txt", "a");
     if (file == NULL) {
         perror("Errore nell'apertura del file");
         exit(1);
     }
 
-    pid = writePid("log.txt", 'a', 1, 't');
+    pid = writePid("log/log.txt", 'a', 1, 't');
 
     //Closing unused pipes heads to avoid deadlock
     close(fds[askrd]);

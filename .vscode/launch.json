@@ -1,0 +1,26 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch ARP Assignment 1",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/main",
+            "args": [],            
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": true,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Set breakpoint at main",
+                    "text": "break main",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "build-project",  // Cambia il preLaunchTask
+            "miDebuggerPath": "/usr/bin/gdb"
+        }
+    ]
+}

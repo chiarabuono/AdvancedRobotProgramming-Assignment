@@ -116,7 +116,7 @@ void resizeHandler(int sig){
 
 void mapInit(FILE *file){
     fprintf(file, "\n-------------------\n");
-    fprintf(file, "MAP INITIALIZATION\n");
+    fprintf(file, "MAP INITIALIZATION!!!\n");
     fprintf(file, "-------------------\n");
     fprintf(file, "Waiting for drone position\n");
     fflush(file);
@@ -400,7 +400,7 @@ void createNewMap(){
 int main(int argc, char *argv[]) {
 
     // Log file opening
-    file = fopen("outputbb.txt", "w");
+    file = fopen("log/outputbb.txt", "w");
     if (file == NULL) {
         perror("Errore nell'apertura del file");
         exit(1);
@@ -440,7 +440,7 @@ int main(int argc, char *argv[]) {
     char dataWrite [80] ;
     snprintf(dataWrite, sizeof(dataWrite), "b%d,", pid);
 
-    if(writeSecure("log.txt", dataWrite,1,'a') == -1){
+    if(writeSecure("log/log.txt", dataWrite,1,'a') == -1){
         perror("Error in writing in log.txt");
         exit(1);
     }
@@ -489,7 +489,7 @@ int main(int argc, char *argv[]) {
     usleep(500000);
 
     char datareaded[200];
-    if (readSecure("log.txt", datareaded,1) == -1) {
+    if (readSecure("log/log.txt", datareaded,1) == -1) {
         perror("Error reading the log file");
         exit(1);
     }

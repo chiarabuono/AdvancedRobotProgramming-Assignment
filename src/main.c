@@ -54,18 +54,12 @@ int main() {
         }
     }
 
-        FILE *logfile = fopen("log.txt", "w");
+        FILE *logfile = fopen("log/log.txt", "w");
     if (logfile == NULL) {
         perror("Errore nell'apertura del file");
         exit(1);
     }
 
-    FILE *paramfile = fopen("parameters.txt", "w");
-    if (paramfile == NULL) {
-        perror("Errore nell'apertura del file");
-        exit(1);
-    }
-    
     pid_t pids[PROCESSNUM];           
 
     for (int i = 0; i < PROCESSNUM; i++){
@@ -81,14 +75,14 @@ int main() {
 
             switch (i) {
                 case DRONE:
-                    args[0] = "./drone";
+                    args[0] = "./bin/drone";
                     if (execvp(args[0], args) == -1) {
                         perror("Errore in execvp per drone");
                         exit(1);
                     }
                     break;
                 case INPUT:
-                    char *argi[] = {"konsole", "-e", "./input", fd_str[i], NULL }; 
+                    char *argi[] = {"konsole", "-e", "./bin/input", fd_str[i], NULL }; 
 
                     if (execvp(argi[0], argi) == -1) {
                         perror("Errore in execvp per input");
@@ -96,14 +90,14 @@ int main() {
                     }
                     break;
                 case OBSTACLE:
-                    args[0] = "./obstacle";
+                    args[0] = "./bin/obstacle";
                     if (execvp(args[0], args) == -1) {
                         perror("Errore in execvp per obstacle");
                         exit(1);
                     }
                     break;
                 case TARGET:
-                    args[0] = "./target";
+                    args[0] = "./bin/target";
                     if (execvp(args[0], args) == -1) {
                         perror("Errore in execvp per target");
                         exit(1);
@@ -124,7 +118,7 @@ int main() {
     } 
     else if (pidbb == 0) { 
         //All the descriptor passed to the blackboard
-        char *args[] = { "konsole","-e", "./blackBoard", fd_str[0], fd_str[1], fd_str[2], fd_str[3], NULL };
+        char *args[] = { "konsole","-e", "./bin/blackBoard", fd_str[0], fd_str[1], fd_str[2], fd_str[3], NULL };
         
         if (execvp(args[0], args) == -1) {
             perror("Error in execvp for blackBoard");
@@ -140,7 +134,7 @@ int main() {
         exit(1);
     } 
     else if (pidwd == 0) { 
-        char *argw[] = {"./watchdog", NULL };
+        char *argw[] = {"./bin/watchdog", NULL };
         
         if (execvp(argw[0], argw) == -1) {
             perror("Error in execvp for watchdog");

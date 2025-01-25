@@ -1,0 +1,16 @@
+{    
+    "files.associations": {
+        "*.h": "c",        // Treat all header files as C headers        
+        "*.c": "c"         // Treat all .c files as C source files
+    },    
+    
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/include",  // Include path for your header files        
+        "${workspaceFolder}/src"      // Source files directory for IntelliSense
+    ],    
+    
+    "C_Cpp.default.defines": [        
+        "DEBUG",  // Example of any defines or macros used in your project
+        "PROCESSNUM=4"  // Example preprocessor directive for number of processes    
+    ]
+}

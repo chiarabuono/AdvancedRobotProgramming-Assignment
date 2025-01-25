@@ -592,7 +592,7 @@ int main(int argc, char *argv[]) {
     }
     
     // Opening log file
-    file = fopen("outputinput.txt", "a");
+    file = fopen("log/outputinput.txt", "a");
      
     if (file == NULL) {
         perror("Errore nell'apertura del file");
@@ -626,7 +626,7 @@ int main(int argc, char *argv[]) {
     char dataWrite [80] ;
     snprintf(dataWrite, sizeof(dataWrite), "i%d,", pid);
 
-    if(writeSecure("log.txt", dataWrite,1,'a') == -1){
+    if(writeSecure("log/log.txt", dataWrite,1,'a') == -1){
         perror("Error in writing in log.txt");
         exit(1);
     }
