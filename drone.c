@@ -10,7 +10,6 @@
 #include "auxfunc.h"
 #include <math.h>
 #include <signal.h>
-// #include <errno.h>
 
 // process that ask or receive
 #define askwr 1
@@ -28,6 +27,16 @@ float K = 1.0;
 Force force_d = {0, 0};
 Force force_o = {0, 0};
 Force force_t = {0, 0};
+
+Drone_bb drone_bb;
+
+Force force = {0, 0};
+
+Speed speedPrev = {0, 0};
+Speed speed = {0, 0};
+
+Targets targets;
+Obstacles obstacles;
 
 int pid;
 int fds[4];
@@ -81,12 +90,6 @@ void updatePosition(Drone *p, Force force, int mass, Speed *speed, Speed *speedP
 
 }
 
-
-Drone_bb DroneToDrone_bb(Drone *drone) {
-    Drone_bb bb = {(int)round(drone->x), (int)round(drone->y)};
-    return bb;
-}
-
 void drone_force(Drone *p, float mass, float K, char* direction) {
     // Force force = {0, 0};
 
@@ -135,15 +138,15 @@ void drone_force(Drone *p, float mass, float K, char* direction) {
 
 }
 
-void obstacle_force(Drone *drone, Obstacles obstacles, FILE* file) {
+void obstacle_force(Drone *drone, Obstacles* obstacles, FILE* file) {
     // Force force = {0, 0};
     float deltaX, deltaY, distance, distance2, alpha, adjustedForceX, adjustedForceY;
     force_o.x = 0;
     force_o.y = 0;
 
     for (int i = 0; i < numObstacle; i++) {
-        deltaX = drone->x - obstacles.x[i];
-        deltaY = drone->y - obstacles.y[i];
+        deltaX = drone->x - obstacles->x[i];
+        deltaY = drone->y - obstacles->y[i];
         distance = sqrt(pow(deltaX, 2) + pow(deltaY, 2));
         // fprintf(file, "%f\t ", distance);
         // fflush(file);
@@ -164,16 +167,15 @@ void obstacle_force(Drone *drone, Obstacles obstacles, FILE* file) {
 
 }
 
-
-void target_force(Drone *drone, Targets targets, FILE* file) {
+void target_force(Drone *drone, Targets* targets, FILE* file) {
     // Force force = {0, 0};
     float deltaX, deltaY, distance, distance2;
     force_t.x = 0;
     force_t.y = 0;
 
     for (int i = 0; i < numTarget; i++) {
-        deltaX = targets.x[i] - drone->x;
-        deltaY = targets.y[i] - drone->y;
+        deltaX = targets->x[i] - drone->x;
+        deltaY = targets->y[i] - drone->y;
         distance = sqrt(pow(deltaX, 2) + pow(deltaY, 2));
 
         fprintf(file, "%f\t ", distance);
@@ -219,52 +221,73 @@ void sig_handler(int signo) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Uso: %s <fd_str>\n", argv[0]);
-        exit(1);
+void newDrone (Drone* drone, Targets* targets, Obstacles* obstacles, char* directions, FILE* file, char inst){
+    target_force(drone, targets, file);
+    obstacle_force(drone, obstacles, file);
+    if(inst != 'M'){
+        drone_force(drone, DRONEMASS, K, directions);
     }
+    force = total_force(force_d, force_o, force_t, file);
+
+    updatePosition(drone, force, DRONEMASS, &speed,&speedPrev, file);
+}
+
+void droneUpdate(Drone* drone, Speed* speed, Force* force, Message* msg) {
+
+    msg->drone.x = (int)round(drone->x);
+    msg->drone.y = (int)round(drone->y);
+    msg->drone.speedX = speed->x;
+    msg->drone.speedY = speed->y;
+    msg->drone.forceX = force->x;
+    msg->drone.forceY = force->y;
+}
+
+void mapInit(Drone* drone, Message* status, Message* msg){
+
+    fprintf(file, "Updating drone position\n");
+    fflush(file);
+
+    droneUpdate(drone, &speed, &force, status);
+
+
+    fprintf(file, "Drone updated position: %d,%d\n", status->drone.x, status->drone.y);
+    fflush(file);
+
+    writeMsg(fds[askwr], status, 
+            "[DRONE] Error sending drone info", file);
+    
+    fprintf(file, "Sent drone position\n");
+    fflush(file);
+    
+    readMsg(fds[recrd], msg, status, 
+            "[DRONE] Error receiving map from BB", file);
+}
+
+int main(int argc, char *argv[]) {
+    
+    fdsRead(argc, argv, fds);
 
     // Opening log file
     file = fopen("outputdrone.txt", "a");
     if (file == NULL) {
-        perror("Errore nell'apertura del file");
-        exit(1);
+        perror("[DRONE] Error during the file opening");
+        exit(EXIT_FAILURE);
     }
 
-    // FDs reading
-    char *fd_str = argv[1];
-    int index = 0;
-
-    char *token = strtok(fd_str, ",");
-    token = strtok(NULL, ",");
-
-    // FDs extraction
-    while (token != NULL && index < 4) {
-        fds[index] = atoi(token);
-        index++;
-        token = strtok(NULL, ",");
-    }
-
-    pid = (int)getpid();
-    char dataWrite[80];
-    snprintf(dataWrite, sizeof(dataWrite), "d%d,", pid);
-
-    if (writeSecure("log.txt", dataWrite, 1, 'a') == -1) {
-        perror("Error in writing in log.txt");
-        exit(1);
-    }
+    pid = writePid("log.txt", 'a', 1, 'd');
 
     // Closing unused pipes heads to avoid deadlock
     close(fds[askrd]);
     close(fds[recwr]);
 
+    //Defining signals
     signal(SIGUSR1, sig_handler);
     signal(SIGTERM, sig_handler);
     
     char directions[MAX_DIRECTIONS] = {0};
 
     Drone drone = {0};
+
     drone.x = 10;
     drone.y = 20;
     drone.previous_x[0] = 10.0;
@@ -272,151 +295,81 @@ int main(int argc, char *argv[]) {
     drone.previous_y[0] = 20.0;
     drone.previous_y[1] = 20.0;
 
-    Drone_bb drone_bb;
-
-    Force force = {0, 0};
-
-    Speed speedPrev = {0, 0};
-    Speed speed = {0, 0};
-
-    Targets targets;
-    Obstacles obstacles;
+    Message status;
+    Message msg;
 
     for (int i = 0; i < MAX_TARGET; i++) {
         targets.x[i] = 0;
         targets.y[i] = 0;
+        status.targets.x[i] = 0;
+        status.targets.y[i] = 0;
     }
 
     for (int i = 0; i < MAX_OBSTACLES; i++) {
         obstacles.x[i] = 0;
         obstacles.y[i] = 0;
+        status.obstacles.x[i] = 0;
+        status.obstacles.y[i] = 0;
     }
 
     char data[200];
-    char drone_str[6];
-    char droneInfo_str[40];
-    int bytesRead;
 
-    drone_bb = DroneToDrone_bb(&drone);
-    
-    droneInfotoString(&drone_bb, &force, &speed, droneInfo_str, sizeof(droneInfo_str), file);
-    fprintf(file, "[start] Drone info %s\n", droneInfo_str);
-    fflush(file);
-    if (write(fds[askwr], droneInfo_str, sizeof(droneInfo_str)) == -1) {
-        perror("[DRONE] Error sending drone info");
-        exit(EXIT_FAILURE);
-    }
+   mapInit(&drone, &status, &msg);
 
-    if (read(fds[recrd], &data, sizeof(data)) == -1){
-        perror("[DRONE] Error receiving map from BB");
-        exit(EXIT_FAILURE);
-    } 
-
-    fprintf(file, "[DRONE] Received map: %s\n", data);
-    fflush(file);
-    memmove(data, data + 1, strlen(data));
-    fromStringtoPositionsWithTwoTargets(targets.x, targets.y, obstacles.x, obstacles.y, data, file);
-    
     while (1)
     {
-        if (write(fds[askwr], "R", 2) == -1) {
-                perror("[DRONE] Ready not sended correctly\n");
-                exit(EXIT_FAILURE);
-            }
-        fprintf(file, "[DRONE] Drone ready\n");
+        status.msg = 'R';
+
+        fprintf(file, "Sending ready msg");
         fflush(file);
 
-        bytesRead = read(fds[recrd], &data, sizeof(data));
-        if (bytesRead == -1) {
-            perror("[DRONE] Error receiving data from BB");
-            exit(EXIT_FAILURE);
-        }
-        fprintf(file, "(%d, %d)\n", (int)drone.x, (int)drone.y);
-        fflush(file);
+        writeMsg(fds[askwr], &status, 
+            "[DRONE] Ready not sended correctly", file);
 
-        fprintf(file, "[DRONE] Received data: %s\n", data);
-        fflush(file);
+        status.msg = '\0';
 
-        switch (data[0]) {
+        readMsg(fds[recrd], &msg, &status, 
+            "[DRONE] Error receiving map from BB", file);
+
+        switch (status.msg) {
         
-        case 'M':
-            memmove(data, data + 1, strlen(data));
-            fprintf(file, "[M] Received new map: %s\n", data);
-            fromStringtoPositionsWithTwoTargets(targets.x, targets.y, obstacles.x, obstacles.y, data, file);
-            // fprintf(file, "[M] Read new map\n");
-            // fflush(file);
+            case 'M':
 
-            // computing new force on the drone
-            target_force(&drone, targets, file);
-            obstacle_force(&drone, obstacles, file);
-            // drone_force(&drone, DRONEMASS, K, directions);
-            force = total_force(force_d, force_o, force_t, file);
+                newDrone(&drone, &status.targets, &status.obstacles, directions,file,status.msg);
+                droneUpdate(&drone, &speed, &force, &status);
 
-            // 'A' case
+                // drone sends its position to BB
+                writeMsg(fds[askwr], &status, 
+                        "[DRONE-M] Error sending drone position", file);
+                break;
+            case 'I':
 
-            updatePosition(&drone, force, DRONEMASS, &speed,&speedPrev, file);
-            drone_bb = DroneToDrone_bb(&drone);
-            
+                strcpy(directions, status.input);
 
-            droneInfotoString(&drone_bb, &force, &speed, droneInfo_str, sizeof(droneInfo_str), file);
+                newDrone(&drone, &status.targets, &status.obstacles, directions,file,status.msg);
+                droneUpdate(&drone, &speed, &force, &status);
 
-            // drone sends its position to BB
-            if (write(fds[askwr], droneInfo_str, strlen(droneInfo_str)) == -1) {
-                perror("[M] Error sending drone position");
+                // drone sends its position to BB
+                writeMsg(fds[askwr], &status, 
+                        "[DRONE-I] Error sending drone position", file);
+
+                break;
+            case 'A':
+                
+                newDrone(&drone, &status.targets, &status.obstacles, directions,file,status.msg);
+                droneUpdate(&drone, &speed, &force, &status);
+
+                fprintf(file, "Drone updated position: %d,%d\n", status.drone.x, status.drone.y);
+                fflush(file);
+                
+                // drone sends its position to BB
+                writeMsg(fds[askwr], &status, 
+                        "[DRONE-A] Error sending drone position", file);
+                usleep(10000);
+                break;
+            default:
+                perror("[DRONE-DEFAULT] Error data received");
                 exit(EXIT_FAILURE);
-            }
-            break;
-        case 'I':
-            
-            char* extractedMsg = strchr(data, ';'); // Trova il primo ';'
-                if (extractedMsg != NULL) {
-                    extractedMsg++; // Salta il ';'
-                } else {
-                    extractedMsg = data; // Se ';' non trovato, usa l'intero messaggio
-                }
-            strcpy(directions, extractedMsg);
-
-            // 'A' case
-            target_force(&drone, targets, file);
-            obstacle_force(&drone, obstacles, file);
-            drone_force(&drone, DRONEMASS, K, directions);
-            force = total_force(force_d, force_o, force_t, file);
-
-            updatePosition(&drone, force, DRONEMASS, &speed,&speedPrev, file);
-            drone_bb = DroneToDrone_bb(&drone);
-            
-
-            droneInfotoString(&drone_bb, &force, &speed, droneInfo_str, sizeof(droneInfo_str), file);
-
-            // drone sends its position to BB
-            if (write(fds[askwr], droneInfo_str, strlen(droneInfo_str)) == -1) {
-                perror("[I] Error sending drone position");
-                exit(EXIT_FAILURE);
-            }
-
-            break;
-        case 'A':
-            
-            target_force(&drone, targets, file);
-            obstacle_force(&drone, obstacles, file);
-            // drone_force(&drone, DRONEMASS, K, directions);
-            force = total_force(force_d, force_o, force_t, file);
-
-            updatePosition(&drone, force, DRONEMASS, &speed,&speedPrev, file);
-            drone_bb = DroneToDrone_bb(&drone);
-            
-            droneInfotoString(&drone_bb, &force, &speed, droneInfo_str, sizeof(droneInfo_str), file);
-
-            // drone sends its position to BB
-            if (write(fds[askwr], droneInfo_str, strlen(droneInfo_str)) == -1) {
-                perror("[DRONE] Error sending drone position");
-                exit(EXIT_FAILURE);
-            }
-            usleep(10000);
-            break;
-        default:
-            perror("[DRONE] Error format string received");
-            exit(EXIT_FAILURE);
         }
 
         usleep(1000000 / PERIOD);
