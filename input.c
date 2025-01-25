@@ -212,7 +212,7 @@ void setName() {
     // Mostra il nome inserito e termina
     werase(stdscr);
     box(stdscr, 0, 0);
-    char confirmation[100];
+    char confirmation[110];
     snprintf(confirmation, sizeof(confirmation), "Name set: %s", inputStatus.name);
     mvwprintw(stdscr, nh / 2, (nw - strlen(confirmation)) / 2, "%s", confirmation);
     wrefresh(stdscr);
@@ -722,8 +722,8 @@ int main(int argc, char *argv[]) {
                 } else if (ch == MY_KEY_q || ch == MY_KEY_Q){
                     btn = 109; //Quit
                     inputStatus.msg = 'q';
-                    fprintf(file,"sending quit: %s\n",msg);
-                    fflush(file);
+                    // fprintf(file,"sending quit: %s\n",inputStatus.msg);
+                    // fflush(file);
                 }else{
                     btn = 99;   //Any of the direction buttons pressed
                 } 
@@ -765,8 +765,8 @@ int main(int argc, char *argv[]) {
                 wrefresh(stdscr);
                 mode = PLAY;
                 inputStatus.msg = 'P';
-                fprintf(file,"sending play: %s\n",msg);
-                fflush(file);
+                // fprintf(file,"sending play: %s\n",msg);
+                // fflush(file);
 
                  writeInputMsg(fds[askwr], &inputStatus, 
                             "[INPUT] Error sending play", file);
@@ -774,8 +774,8 @@ int main(int argc, char *argv[]) {
             }else if(ch == MY_KEY_Q || ch == MY_KEY_q){
                 wrefresh(stdscr);
                 inputStatus.msg = 'q';
-                fprintf(file,"sending quit: %s\n",msg);
-                fflush(file);
+                // fprintf(file,"sending quit: %s\n",msg);
+                // fflush(file);
                 writeInputMsg(fds[askwr], &inputStatus, 
                             "[INPUT] Error sending quit", file);
             }

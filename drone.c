@@ -344,17 +344,7 @@ int main(int argc, char *argv[]) {
                 break;
             case 'I':
 
-                //--------------------------------------------
-                //TODO: MODIFICARE INVIO E LETTURA DEI COMANDI
-                //--------------------------------------------
-
-                char* extractedMsg = strchr(data, ';'); // Trova il primo ';'
-                    if (extractedMsg != NULL) {
-                        extractedMsg++; // Salta il ';'
-                    } else {
-                        extractedMsg = data; // Se ';' non trovato, usa l'intero messaggio
-                    }
-                strcpy(directions, extractedMsg);
+                strcpy(directions, status.input);
 
                 newDrone(&drone, &status.targets, &status.obstacles, directions,file,status.msg);
                 droneUpdate(&drone, &speed, &force, &status);

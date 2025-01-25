@@ -71,6 +71,7 @@ typedef struct {
     char msg;
     int level;
     int difficulty;
+    char input[10];
     Drone_bb drone;
     Targets targets;
     Obstacles obstacles;

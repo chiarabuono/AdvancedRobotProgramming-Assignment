@@ -186,6 +186,7 @@ void msgUnpack(Message* msgIn, Message* msgOut){
     msgOut->msg = msgIn->msg;
     msgOut->level = msgIn->level;
     msgOut->difficulty = msgIn->difficulty;
+    strncpy(msgOut->input, msgIn->input, sizeof(msgOut->input));
     msgOut->drone = msgIn->drone;
     msgOut->targets = msgIn->targets;
     msgOut->obstacles = msgIn->obstacles;
