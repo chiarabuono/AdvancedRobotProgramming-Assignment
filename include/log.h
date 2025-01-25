@@ -46,7 +46,8 @@ static inline void closeLogFile() {
 #ifdef LOGCONFIG
 #define LOG(status)                                             \
     {                                                         \
-        printf("[%d] at %s:\n", __LINE__, __FILE__);          \
+        fprintf(logFile,"[%s,%s] at %d,%s:\n", __DATE__,__TIME__,__LINE__, __FILE__);          \
+        fflush(logFile);    \
         LOGCONFIG(status);                                      \
     }
 #endif

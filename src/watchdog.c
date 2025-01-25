@@ -101,59 +101,59 @@ int main(int argc, char *argv[]) {
 
     signal(SIGTERM, sig_handler);
 
-    // for (int i = 0; i < PROCESSTOCONTROL; i++) {
-    //         if (kill(pids[i], SIGUSR1) == -1) {
-    //             fprintf(file,"Process %d is not responding or has terminated\n", pids[i]);
-    //             fflush(file);
-    //             closeAll(i);
-    //         }
-    //     usleep(10000);
-    // }
+    for (int i = 0; i < PROCESSTOCONTROL; i++) {
+            if (kill(pids[i], SIGUSR1) == -1) {
+                fprintf(file,"Process %d is not responding or has terminated\n", pids[i]);
+                fflush(file);
+                closeAll(i);
+            }
+        usleep(10000);
+    }
 
     int interval = 0;
 
     while (1) {
 
         sleep(1);
-        // interval++;
+        interval++;
 
-        // if(interval >= 4){
-        //     interval = 0;
-        //     for (int i = 0; i < PROCESSTOCONTROL; i++) {
-        //             if (kill(pids[i], SIGUSR1) == -1) {
-        //                 fprintf(file,"Process %d is not responding or has terminated\n", pids[i]);
-        //                 fflush(file);
-        //                 closeAll(i);
-        //             }
-        //         usleep(10000);
-        //     }
-        // }   
+        if(interval >= 4){
+            interval = 0;
+            for (int i = 0; i < PROCESSTOCONTROL; i++) {
+                    if (kill(pids[i], SIGUSR1) == -1) {
+                        fprintf(file,"Process %d is not responding or has terminated\n", pids[i]);
+                        fflush(file);
+                        closeAll(i);
+                    }
+                usleep(10000);
+            }
+        }   
 
-        // usleep(10000);
-        // time_t rawtime;
-        // struct tm *timeinfo;
-        // time(&rawtime);
-        // timeinfo = localtime(&rawtime);
+        usleep(10000);
+        time_t rawtime;
+        struct tm *timeinfo;
+        time(&rawtime);
+        timeinfo = localtime(&rawtime);
 
-        // char timeReaded[80];
-        // for(int i = 0; i < PROCESSTOCONTROL; i++){
-        //     if(readSecure("log.txt", timeReaded, i + 3) == -1){
-        //         perror("Error reading the log file");
-        //         fclose(file);
-        //         exit(1);
-        //     }
+        char timeReaded[80];
+        for(int i = 0; i < PROCESSTOCONTROL; i++){
+            if(readSecure("log/log.txt", timeReaded, i + 3) == -1){
+                perror("Error reading the log file");
+                fclose(file);
+                exit(1);
+            }
 
-        //     int hours, minutes, seconds;
-        //     sscanf(timeReaded, "%d:%d:%d", &hours, &minutes, &seconds);
-        //     long timeReadedInSeconds = hours * 3600 + minutes * 60 + seconds;
+            int hours, minutes, seconds;
+            sscanf(timeReaded, "%d:%d:%d", &hours, &minutes, &seconds);
+            long timeReadedInSeconds = hours * 3600 + minutes * 60 + seconds;
             
-        //     long currentTimeInSeconds = timeinfo->tm_hour * 3600 + timeinfo->tm_min * 60 + timeinfo->tm_sec;
-        //     long timeDifference = currentTimeInSeconds - timeReadedInSeconds;
+            long currentTimeInSeconds = timeinfo->tm_hour * 3600 + timeinfo->tm_min * 60 + timeinfo->tm_sec;
+            long timeDifference = currentTimeInSeconds - timeReadedInSeconds;
 
-        //     if (timeDifference > 5) {
-        //         closeAll(i);
-        //     }
-        // } 
+            if (timeDifference > 5) {
+                closeAll(i);
+            }
+        } 
     }                 
     
     //Close the file

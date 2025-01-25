@@ -544,7 +544,9 @@ int main(int argc, char *argv[]) {
         status.difficulty = inputStatus.difficulty;
     }
 
-    LOGCONFIG(inputStatus);
+    //LOGCONFIG(inputStatus);
+
+    LOG(inputStatus);
 
     mapInit(file);
 

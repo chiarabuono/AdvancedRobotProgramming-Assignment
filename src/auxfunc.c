@@ -287,5 +287,5 @@ void handler(int id, FILE *file) {
     strftime(log_entry, sizeof(log_entry), "%H:%M:%S", timeinfo);
     //fprintf(file, "Process %d received signal from WD at %s\n", id, log_entry);
     //fflush(file);
-    writeSecure("log.txt", log_entry, id + 3, 'o');
+    writeSecure("log/log.txt", log_entry, id + 3, 'o');
 }
