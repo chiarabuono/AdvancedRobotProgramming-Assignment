@@ -248,14 +248,16 @@ void droneUpdate(Drone* drone, Speed* speed, Force* force, Message* msg) {
 
 void mapInit(Drone* drone, Message* status, Message* msg){
 
+    
+    msgInit(status);
+
     fprintf(file, "Updating drone position\n");
     fflush(file);
 
     droneUpdate(drone, &speed, &force, status);
 
 
-    fprintf(file, "Drone updated position: %d,%d\n", status->drone.x, status->drone.y);
-    fflush(file);
+    printMessageToFile(file, status);
 
     writeMsg(fds[askwr], status, 
             "[DRONE] Error sending drone info", file);
@@ -263,7 +265,7 @@ void mapInit(Drone* drone, Message* status, Message* msg){
     fprintf(file, "Sent drone position\n");
     fflush(file);
     
-    readMsg(fds[recrd], msg, status, 
+    readMsg(fds[recrd], status,
             "[DRONE] Error receiving map from BB", file);
 }
 
@@ -329,7 +331,7 @@ int main(int argc, char *argv[]) {
 
         status.msg = '\0';
 
-        readMsg(fds[recrd], &msg, &status, 
+        readMsg(fds[recrd], &status,
             "[DRONE] Error receiving map from BB", file);
 
         switch (status.msg) {

@@ -333,12 +333,12 @@ void mainMenu(){
 
     inputStatus.msg = 'A';
     strncpy(inputStatus.input, "left", 10);
-    printInputMessageToFile(file, inputStatus);
+    printInputMessageToFile(file, &inputStatus);
 
     writeInputMsg(fds[askwr], &inputStatus, 
                 "Error sending settings", file);
 
-    readInputMsg(fds[recrd], &inputMsg, &inputStatus, 
+    readInputMsg(fds[recrd], &inputStatus, 
                 "Error reading ack", file);
 
     if(inputStatus.msg == 'A'){
@@ -349,10 +349,10 @@ void mainMenu(){
         fflush(file);
     }
 
-    readInputMsg(fds[recrd], &inputMsg, &inputStatus, 
+    readInputMsg(fds[recrd], &inputStatus, 
                 "Error reading drone info", file);
     
-    printInputMessageToFile(file, inputStatus);
+    printInputMessageToFile(file, &inputStatus);
 
 }
 
@@ -639,18 +639,11 @@ int main(int argc, char *argv[]) {
     btnSetUp((int)(((float)nh/2)/2),(int)((((float)nw / 2) - 35)/2));
     mode = PLAY;
 
-    strcpy(inputStatus.input, "reset");
+    inputMsgInit(&inputStatus);
 
     while (1) {
 
         int ch;
-
-        droneInfo[0] = drone.x;
-        droneInfo[1] = drone.y;
-        droneInfo[2] = force.x;
-        droneInfo[3] = force.y;
-        droneInfo[4] = speed.x;
-        droneInfo[5] = speed.y;
 
         if(mode == PLAY){
             fprintf(file,"Mode: PLAY\n");
@@ -725,18 +718,18 @@ int main(int argc, char *argv[]) {
                 drawBtn(99); //to make all the buttons white
 
                 fprintf(file, "Sending:\n");
-                printInputMessageToFile(file, inputStatus);
+                printInputMessageToFile(file, &inputStatus);
 
                 // Send the message to the blackboard
                 
                 writeInputMsg(fds[askwr], &inputStatus, 
                             "[INPUT] Error sending message", file);
 
-                readInputMsg(fds[recrd], &inputMsg, &inputStatus, 
+                readInputMsg(fds[recrd], &inputStatus, 
                             "Error reading ack", file);
                 
                 fprintf(file,"Received:\n");
-                printInputMessageToFile(file, inputStatus);
+                printInputMessageToFile(file, &inputStatus);
             }  
         }else if(mode == PAUSE){
 

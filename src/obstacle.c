@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
     while (1) {
 
         // Read drone position
-        readMsg(fds[recrd], &msg, &status, 
+        readMsg(fds[recrd], &status,
             "[OBSTACLE] Error reading drone and target position from [BB]", file);
 
         status.obstacles = createObstacles(status.drone, status.targets);

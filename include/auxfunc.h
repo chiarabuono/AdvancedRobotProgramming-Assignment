@@ -107,14 +107,14 @@ extern char jsonBuffer[MAX_FILE_SIZE];
 int writeSecure(char* filename, char* data, int numeroRiga, char mode);
 int readSecure(char* filename, char* data, int numeroRiga);
 void handler(int id);
-void msgUnpack(Message* msgIn, Message* msgOut);
 void writeMsg(int pipeFds, Message* msg, char* error, FILE* file);
-void readMsg(int pipeFds, Message* msgIn, Message* msgOut, char* error, FILE* file);
+void readMsg(int pipeFds, Message* msgOut, char* error, FILE* file);
 void writeInputMsg(int pipeFds, inputMessage* msg, char* error, FILE* file);
-void readInputMsg(int pipeFds, inputMessage* msgIn, inputMessage* msgOut, char* error, FILE* file);
-void inputMsgUnpack(inputMessage* msgIn, inputMessage* msgOut);
+void readInputMsg(int pipeFds, inputMessage* msgOut, char* error, FILE* file);
 void fdsRead (int argc, char* argv[], int* fds);
 int writePid(char* file, char mode, int row, char id);
-void printInputMessageToFile(FILE *file, inputMessage msg);
-
+void printInputMessageToFile(FILE *file, inputMessage* msg);
+void printMessageToFile(FILE *file, Message* msg);
+void msgInit(Message* status);
+void inputMsgInit(inputMessage* status);
 #endif
