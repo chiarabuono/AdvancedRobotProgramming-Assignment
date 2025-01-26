@@ -69,7 +69,7 @@ int collision = 0;
 int targetsHit = 0;
 
 float resetMap = MAPRESET; // [s]
-int levelTime = 30;
+int levelTime = 40;
 float elapsedTime = 0;
 int remainingTime = 0;
 char difficultyStr[10];
@@ -277,14 +277,14 @@ void detectCollision(Message* status, Drone_bb * prev, FILE* file) {
     fprintf(file, "PREV(%d, %d), DRONE(%d, %d)\nTARGET:\n", prev->x, prev->y, status->drone.x, status->drone.y);
     for (int i = 0; i < numTarget + status->level; i++) {
         fprintf(file, " (%d, %d, %d)", status->targets.x[i], status->targets.y[i], status->targets.value[i]);
-        if (!status->targets.value[i] && (((prev->x <= status->targets.x[i] + 2 && status->targets.x[i] - 2 <= status->drone.x)  &&
+        if (status->targets.value[i] && (((prev->x <= status->targets.x[i] + 2 && status->targets.x[i] - 2 <= status->drone.x)  &&
             (prev->y <= status->targets.y[i] + 2 && status->targets.y[i]- 2 <= status->drone.y) )||
             ((prev->x >= status->targets.x[i] - 2 && status->targets.x[i] >= status->drone.x + 2) &&
             (prev->y >= status->targets.y[i] - 2 && status->targets.y[i] >= status->drone.y + 2) ))){
+                inputStatus.score += status->targets.value[i];
                 status->targets.value[i] = 0;
                 collision = 1;
-                targetsHit++;
-                inputStatus.score += status->targets.value[i];
+                targetsHit++;   
         }
     }
 
@@ -536,7 +536,7 @@ int main(int argc, char *argv[]) {
     while (1) {
         
         elapsedTime += PERIODBB/second;
-        remainingTime = levelTime - (int)elapsedTime;
+        remainingTime = (int)(levelTime + 5*status.level) - (int)elapsedTime;
 
         if (remainingTime < 0){
             elapsedTime = 0;
@@ -569,11 +569,12 @@ int main(int argc, char *argv[]) {
             createNewMap();
         }
 
-        if (targetsHit >= numTarget) {
+        if (targetsHit >= numTarget + status.level) {
             fprintf(file, "All targets reached\n");
             fflush(file);
             status.level++;  
             targetsHit = 0;
+            elapsedTime = 0;
             collision = 0;
             resetTargetValue(&status);
             createNewMap();
@@ -702,6 +703,7 @@ int main(int argc, char *argv[]) {
                     fflush(file);
 
                     inputStatus.msg = 'B';
+                    inputMsg.msg = 'B';
 
                     while(inputMsg.msg != 'P' && inputMsg.msg != 'q'){
                         
