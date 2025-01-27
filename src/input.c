@@ -82,6 +82,8 @@ inputMessage inputStatus;
 Message msg;
 Message status;
 
+Player players[10];
+
 void sig_handler(int signo) {
     if (signo == SIGUSR1) {
         handler(INPUT);
@@ -356,6 +358,7 @@ void mainMenu(){
 
 }
 
+
 void drawInfo() {
 
     //Menu part1
@@ -428,24 +431,26 @@ void drawInfo() {
 
     int initialrow3 = ((2 * nh / 3) + ((nh / 3 - 10) / 2) > 0) ? (( 2 * nh / 3) + ((nh / 3 - 10) / 2)) : (2 * nh / 3);
     
-
     for (int i = 0; i < 10; i++) {
 
-        char playerInfo[100] = "Player: mohamad, score: 10, level: 1";
+    // Crea una stringa playerInfo con i dati dei giocatori
+    char playerInfo[100];
+    snprintf(playerInfo, sizeof(playerInfo), "Player: %s, score: %d, level: %d", players[i].name, players[i].score, players[i].level);
 
-        // Calcola le lunghezze effettive delle stringhe
-        int textLen = strlen(playerInfo);
+    // Calcola le lunghezze effettive delle stringhe
+    int textLen = strlen(playerInfo);
 
-        // Calcola la colonna per centrare l'intera combinazione
-        int col = ((nw / 2) - textLen) / 2;
+    // Calcola la colonna per centrare l'intera combinazione
+    int col = ((nw / 2) - textLen) / 2;
 
-        // fprintf(file,"Row: %d, Col: %d\n", initialrow + i, col);
-        // fflush(file);
+    // fprintf(file,"Row: %d, Col: %d\n", initialrow + i, col);
+    // fflush(file);
 
-        // Stampa la riga centrata
-        mvwprintw(control, initialrow3 + i, col, "%s", playerInfo);
-        wrefresh(control);
-    }
+    // Stampa la riga centrata
+    mvwprintw(control, initialrow3 + i, col, "%s", playerInfo);
+    wrefresh(control);
+}
+
     
 
 }
@@ -526,7 +531,49 @@ void resizeHandler(int sig){
     }
 }
 
-void readConfig(){
+// void readConfig(){
+    
+//     fprintf(file,"Reading configuration file\n");
+//     fflush(file);
+
+//     int len = fread(jsonBuffer, 1, sizeof(jsonBuffer), settingsfile); 
+//     fclose(settingsfile);
+
+//     cJSON *json = cJSON_Parse(jsonBuffer);// parse the text to json object
+
+//     if (json == NULL){
+//         perror("Error parsing the file");
+//     }
+
+//     // Salva i dati direttamente in inputStatus
+//     strcpy(inputStatus.name, cJSON_GetObjectItemCaseSensitive(json, "PlayerName")->valuestring);
+//     inputStatus.difficulty = cJSON_GetObjectItemCaseSensitive(json, "Difficulty")->valueint;
+//     inputStatus.level = cJSON_GetObjectItemCaseSensitive(json, "StartingLevel")->valueint;
+
+//     // Per array
+//     cJSON *numbersArray = cJSON_GetObjectItemCaseSensitive(json, "DefaultBTN"); // questo è un array
+//     int arraySize = cJSON_GetArraySize(numbersArray);
+//     fprintf(file,"Array size: %d\n", arraySize);
+//     fflush(file);
+
+//     fprintf(file,"BtnValues:");
+//     fflush(file);
+
+//     for (int i = 0; i < arraySize; ++i) {
+//         cJSON *element = cJSON_GetArrayItem(numbersArray, i);
+//         if (cJSON_IsNumber(element)) {
+//             fprintf(file,"%d,", btnValues[i] = element->valueint);
+//             fflush(file);
+//         }
+//     }
+
+//     cJSON_Delete(json); // pulisci
+    
+//     // Non è più necessario liberare gameConfig
+// }
+
+
+void readConfig() {
     
     fprintf(file,"Reading configuration file\n");
     fflush(file);
@@ -534,9 +581,9 @@ void readConfig(){
     int len = fread(jsonBuffer, 1, sizeof(jsonBuffer), settingsfile); 
     fclose(settingsfile);
 
-    cJSON *json = cJSON_Parse(jsonBuffer);// parse the text to json object
+    cJSON *json = cJSON_Parse(jsonBuffer); // parse the text to json object
 
-    if (json == NULL){
+    if (json == NULL) {
         perror("Error parsing the file");
     }
 
@@ -562,9 +609,113 @@ void readConfig(){
         }
     }
 
+    // Leggi i dati dei giocatori
+    cJSON *playersArray = cJSON_GetObjectItemCaseSensitive(json, "Players");
+    int playersArraySize = cJSON_GetArraySize(playersArray);
+
+    for (int i = 0; i < playersArraySize; ++i) {
+        cJSON *player = cJSON_GetArrayItem(playersArray, i);
+        if (cJSON_IsObject(player)) {
+            strcpy(players[i].name, cJSON_GetObjectItemCaseSensitive(player, "name")->valuestring);
+            players[i].score = cJSON_GetObjectItemCaseSensitive(player, "score")->valueint;
+            players[i].level = cJSON_GetObjectItemCaseSensitive(player, "level")->valueint;
+        }
+    }
+
     cJSON_Delete(json); // pulisci
-    
     // Non è più necessario liberare gameConfig
+}
+
+void updateLeaderboard() {
+    // Crea un nuovo giocatore con i dati di status
+    Player currentPlayer;
+    strcpy(currentPlayer.name, inputStatus.name);
+    currentPlayer.score = inputStatus.score;
+    currentPlayer.level = inputStatus.level;
+
+    // Trova la posizione corretta per il giocatore corrente
+    int position = -1;
+    for (int i = 0; i < 10; i++) {
+        if (currentPlayer.score > players[i].score) {
+            position = i;
+            break;
+        }
+    }
+
+    // Se il giocatore corrente non supera nessuno dei giocatori esistenti, esci
+    if (position == -1 && players[9].score >= currentPlayer.score) {
+        return;  // Non c'è spazio e il punteggio non è abbastanza alto
+    }
+
+    // Inserisci il giocatore corrente nella posizione corretta e riorganizza gli altri
+    for (int i = 9; i > position; i--) {
+        if (i < 9) {
+            players[i + 1] = players[i];
+        }
+    }
+    players[position] = currentPlayer;
+
+    // Se necessario, rimuovi l'ultimo giocatore per mantenere la classifica a 10 elementi
+    if (players[10].score > 0) {
+        memset(&players[10], 0, sizeof(Player));
+    }
+}
+
+void updatePlayersInConfig() {
+    FILE *settingsfile = fopen("appsettings.json", "r+");
+    if (settingsfile == NULL) {
+        perror("Error opening the file");
+        return;
+    }
+
+    // Leggi il file esistente
+    int len = fread(jsonBuffer, 1, sizeof(jsonBuffer), settingsfile);
+    fclose(settingsfile);
+
+    cJSON *json = cJSON_Parse(jsonBuffer);
+    if (json == NULL) {
+        perror("Error parsing the file");
+        return;
+    }
+
+    // Aggiorna i dati dei giocatori
+    cJSON *playersArray = cJSON_GetObjectItemCaseSensitive(json, "Players");
+    if (!playersArray || !cJSON_IsArray(playersArray)) {
+        perror("Error finding the Players array in the file");
+        cJSON_Delete(json);
+        return;
+    }
+
+    for (int i = 0; i < 10; i++) {
+        cJSON *player = cJSON_GetArrayItem(playersArray, i);
+        if (cJSON_IsObject(player)) {
+            cJSON_ReplaceItemInObjectCaseSensitive(player, "name", cJSON_CreateString(players[i].name));
+            cJSON_ReplaceItemInObjectCaseSensitive(player, "score", cJSON_CreateNumber(players[i].score));
+            cJSON_ReplaceItemInObjectCaseSensitive(player, "level", cJSON_CreateNumber(players[i].level));
+        }
+    }
+
+    // Scrivi di nuovo nel file aggiornato con formattazione
+    settingsfile = fopen("appsettings.json", "w");
+    if (settingsfile == NULL) {
+        perror("Error opening the file for writing");
+        cJSON_Delete(json);
+        return;
+    }
+
+    char *jsonString = cJSON_Print(json);  // Usa cJSON_Print per la formattazione
+    fprintf(settingsfile, "%s", jsonString);
+
+    // Pulisci la memoria
+    free(jsonString);
+    cJSON_Delete(json);
+    fclose(settingsfile);
+}
+
+
+void saveGame(){
+    updateLeaderboard();
+    updatePlayersInConfig();
 }
 
 
@@ -590,6 +741,13 @@ int main(int argc, char *argv[]) {
     }
 
     readConfig();
+
+    // for (int i = 0; i < 10; i++) {
+    //     strcpy(players[i].name, "Default");
+    //     players[i].score = 10 - i;
+    //     players[i].level = 10 - i;
+    // }
+
 
     // FDs reading
     char *fd_str = argv[1];
@@ -701,6 +859,8 @@ int main(int argc, char *argv[]) {
                 } else if (ch == MY_KEY_q || ch == MY_KEY_Q){
                     btn = 109; //Quit
                     inputStatus.msg = 'q';
+
+                    saveGame();
                     // fprintf(file,"sending quit: %s\n",inputStatus.msg);
                     // fflush(file);
                 }else{
@@ -757,7 +917,7 @@ int main(int argc, char *argv[]) {
                 strcpy(inputStatus.input, "reset");
 
                 writeInputMsg(fds[askwr], &inputStatus, 
-                            "[INPUT] Error sending quit", file);
+                            "[INPUT] Error sending play", file);
             }
         }
 

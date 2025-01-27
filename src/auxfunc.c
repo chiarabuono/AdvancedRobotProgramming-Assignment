@@ -8,8 +8,12 @@
 #include "auxfunc.h"
 #include <time.h>
 
+int levelTime = 40;
 int numTarget = 4;
 int numObstacle = 9;
+int incTime = 10;
+int incTarget = 1;
+int incObstacle = 1;
 
 const char *moves[] = {"upleft", "up", "upright", "left", "center", "right", "downleft", "down", "downright"};
 char jsonBuffer[MAX_FILE_SIZE];

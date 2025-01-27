@@ -42,8 +42,6 @@ float second = 1000000;
 
 int pid;
 
-char ack [2] = "A\0";
-
 int fds[4][4] = {0};
 int mode = PLAY;
 
@@ -69,7 +67,7 @@ int collision = 0;
 int targetsHit = 0;
 
 float resetMap = MAPRESET; // [s]
-int levelTime = 40;
+
 float elapsedTime = 0;
 int remainingTime = 0;
 char difficultyStr[10];

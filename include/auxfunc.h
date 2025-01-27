@@ -35,8 +35,13 @@
 
 extern const char *moves[9];
 
+extern int levelTime;
 extern int numTarget;
 extern int numObstacle;
+extern int incTime;
+extern int incTarget1;
+extern int incObstacle1;
+
 
 typedef struct {
     int x;
@@ -96,7 +101,8 @@ typedef struct
 } Config;
 
 typedef struct {
-    char name[50];
+    
+    char name[MAX_LINE_LENGTH];
     int score;
     int level;
 } Player;
