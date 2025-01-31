@@ -12,7 +12,7 @@
 #define USE_DEBUG 1
 
 // Variabili globali
-static FILE *droneFile = NULL;
+extern FILE *droneFile;
 
 
 #define LOGNEWMAP(status) {                                                      \
@@ -49,13 +49,13 @@ static FILE *droneFile = NULL;
     }                                                                            \
                                                                                  \
     char date[50];                                                               \
-    getFormattedTime(date, sizeof(date));                                        \                                                                             \
+    getFormattedTime(date, sizeof(date));                                         \
     fprintf(droneFile, "%s Process dead\n", date);                              \
     fflush(droneFile);                                                             \
 }
 
 #if USE_DEBUG
-#define LOGPOSITION(drone) {
+#define LOGPOSITION(drone) { \
     if (!droneFile) {                                                              \
         perror("Log file not initialized.\n");                                   \
         return;                                                                  \
@@ -65,8 +65,8 @@ static FILE *droneFile = NULL;
     getFormattedTime(date, sizeof(date));                                        \
     fprintf(droneFile, "%s Drone info - ", date); \
     fprintf(droneFile, "Pre-previous position (%d, %d) ", drone->previous_x[1], drone->previous_y[1]); \
-    fprintf(droneFile, "Previous position (%d, %d) ", droneInfo.previous_x[0], droneInfo.previous_y[0]); \
-    fprintf(droneFile, "Actual position (%d, %d) ", droneInfo.x, droneInfo.y); \
+    fprintf(droneFile, "Previous position (%d, %d) ", drone.previous_x[0], drone.previous_y[0]); \
+    fprintf(droneFile, "Actual position (%d, %d) ", drone.x, drone.y); \
     fflush(droneFile); \
 }
 
@@ -101,7 +101,7 @@ static FILE *droneFile = NULL;
 }
 
 #if USE_DEBUG
-#define LOGFORCES(force_d, force_t, force_o) {
+#define LOGFORCES(force_d, force_t, force_o) { \
     if (!droneFile) {                                                              \
         perror("Log file not initialized.\n");                                   \
         return;                                                                  \

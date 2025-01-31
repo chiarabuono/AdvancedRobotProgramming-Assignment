@@ -42,7 +42,7 @@ Message msg;
 int pid;
 int fds[4];
 
-FILE *droneFile;
+FILE *droneFile = NULL;
 
 typedef struct
 {
@@ -63,7 +63,7 @@ void updatePosition(Drone *p, Force force, int mass, Speed *speed, Speed *speedP
     p->x = x_pos;
     p->y = y_pos;
 
-    LOGPOSITION(p);
+    // LOGPOSITION(p);
 
     if (p->x < 0) p->x = 0;
     if (p->y < 0) p->y = 0;
@@ -195,7 +195,7 @@ Force total_force(Force drone, Force obstacle, Force target, FILE* droneFile){
     total.x = drone.x + obstacle.x + target.x;
     total.y = drone.y + obstacle.y + target.y;
 
-    LOGFORCES(drone, target, obstacle);
+    // LOGFORCES(drone, target, obstacle);
 
     return total;
 }
@@ -206,7 +206,7 @@ void sig_handler(int signo) {
     }else if(signo == SIGTERM){
         // fprintf(droneFile, "Drone is quitting\n");
         // fflush(droneFile);   
-        LOGPROCESSDIED();
+        // LOGPROCESSDIED();
         fclose(droneFile);
         close(fds[recrd]);
         close(fds[askwr]);
@@ -246,7 +246,7 @@ void mapInit(Drone* drone, Message* status, Message* msg){
     droneUpdate(drone, &speed, &force, status);
 
     //printMessageToFile(droneFile, status);
-    LOGDRONEINFO(droneInfo);
+    // LOGDRONEINFO(status->drone);
 
 
     writeMsg(fds[askwr], status, 
@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
     char data[200];
 
    mapInit(&drone, &status, &msg);
-   LOGNEWMAP(status);
+   // LOGNEWMAP(status);
 
     while (1)
     {
