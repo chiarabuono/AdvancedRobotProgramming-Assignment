@@ -125,4 +125,5 @@ void printInputMessageToFile(FILE *file, inputMessage* msg);
 void printMessageToFile(FILE *file, Message* msg);
 void msgInit(Message* status);
 void inputMsgInit(inputMessage* status);
+static inline void getFormattedTime(char *buffer, size_t size);
 #endif

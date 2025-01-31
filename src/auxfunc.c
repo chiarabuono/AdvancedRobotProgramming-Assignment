@@ -351,3 +351,9 @@ void handler(int id) {
     strftime(log_entry, sizeof(log_entry), "%H:%M:%S", timeinfo);
     writeSecure("log/log.txt", log_entry, id + 3, 'o');
 }
+
+// Funzione helper per ottenere il timestamp formattato
+static inline void getFormattedTime(char *buffer, size_t size) {
+    time_t currentTime = time(NULL);
+    snprintf(buffer, size, "%.*s", (int)(strlen(ctime(&currentTime)) - 1), ctime(&currentTime));
+}
