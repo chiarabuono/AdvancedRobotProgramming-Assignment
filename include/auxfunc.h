@@ -22,7 +22,7 @@
 #define FORCE_THRESHOLD 5 //[m]
 #define MIN_THRESHOLD 2 //[m]
 
-#define MAX_FORCE 5 //
+#define MAX_FORCE 1 //
 
 #define TARGET_DETECTION 1
 

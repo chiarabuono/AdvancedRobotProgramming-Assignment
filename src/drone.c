@@ -138,11 +138,9 @@ void drone_force(Drone *p, float mass, float K, char* direction) {
         force_d.x += 0;
         force_d.y += 0;
     }
-
-    // if (force_d.x > STEP*10) force_d.x = STEP*10;
-    // if (force_d.y > STEP*10) force_d.y = STEP*10;
-    // if (force_d.x < -STEP*10) force_d.x = -STEP*10;
-    // if (force_d.y < -STEP*10) force_d.y = -STEP*10;
+    // To avoid having the drone still trying to move where it's not supposed to
+    if (p->x > WINDOW_WIDTH || p->x < 1) force_d.x = 0;
+    if (p->y > WINDOW_HEIGHT || p->y < 1) force_d.y = 0;
 
 }
 
