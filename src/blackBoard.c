@@ -523,10 +523,6 @@ int main(int argc, char *argv[]) {
         status.difficulty = inputStatus.difficulty;
     }
 
-    //LOGCONFIG(inputStatus);
-
-    LOG(inputStatus);
-
     mapInit(file);
 
     elapsedTime = 0;
@@ -635,7 +631,7 @@ int main(int argc, char *argv[]) {
          
                 readMsg(fds[DRONE][askrd], &msg,
                                 "[BB] Error reading drone position", file);
-
+                LOGDRONEINFO(status.drone);
                 if(msg.msg == 'R'){
                     if (collision)
                     {
@@ -651,6 +647,7 @@ int main(int argc, char *argv[]) {
 
                         readMsg(fds[DRONE][askrd], &status,
                                 "[BB] Error reading drone position", file);
+                        LOGDRONEINFO(status.drone);
 
                     }else{
                         
@@ -668,7 +665,7 @@ int main(int argc, char *argv[]) {
 
                         readMsg(fds[DRONE][askrd], &status,
                                 "[BB] Error reading drone position", file);
-                        
+                        LOGDRONEINFO(status.drone);
 
                         fprintf(file, "Drone updated position: %d,%d\n", status.drone.x, status.drone.y);
                         fflush(file);
@@ -687,6 +684,7 @@ int main(int argc, char *argv[]) {
                 printInputMessageToFile(file, &inputMsg);
 
                 if(inputMsg.msg == 'P'){
+                    LOGDRONEINFO(status.drone)
                     
                     fprintf(file, "Pause\n");
                     fflush(file);
@@ -777,6 +775,7 @@ int main(int argc, char *argv[]) {
 
                 readMsg(fds[DRONE][askrd], &status,
                                 "[BB] Error reading drone position", file);
+                LOGDRONEINFO(status.drone);
 
                 inputStatus.droneInfo = status.drone;
                 
