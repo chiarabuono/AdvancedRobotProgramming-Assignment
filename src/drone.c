@@ -158,6 +158,7 @@ void obstacle_force(Drone *drone, Obstacles* obstacles, FILE* file) {
         fprintf(file,"(added %d)\t", i);
         fflush(file);
         float repulsion =ETA * pow(((1/distance) - (1/FORCE_THRESHOLD)), 2)/distance;
+        if (repulsion > MAX_FORCE) repulsion = MAX_FORCE;
         adjustedForceX = repulsion * cos(alpha);
         adjustedForceY = repulsion * sin(alpha);
 

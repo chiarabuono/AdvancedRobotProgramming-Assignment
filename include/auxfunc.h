@@ -22,6 +22,8 @@
 #define FORCE_THRESHOLD 5 //[m]
 #define MIN_THRESHOLD 2 //[m]
 
+#define MAX_FORCE 5 //
+
 #define TARGET_DETECTION 1
 
 #define len_str_targets 6 * MAX_TARGET + 2
