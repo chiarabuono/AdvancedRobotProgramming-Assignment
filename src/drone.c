@@ -10,6 +10,7 @@
 #include "auxfunc.h"
 #include <math.h>
 #include <signal.h>
+#include "log.h"
 
 // process that ask or receive
 #define askwr 1
@@ -27,8 +28,6 @@ float K = 1.0;
 Force force_d = {0, 0};
 Force force_o = {0, 0};
 Force force_t = {0, 0};
-
-Drone_bb drone_bb;
 
 Force force = {0, 0};
 
@@ -56,8 +55,6 @@ typedef struct
 
 void updatePosition(Drone *p, Force force, int mass, Speed *speed, Speed *speedPrev, FILE* file) {
 
-    fprintf(file, "-----------------------------------------------\n");
-    fprintf(file, "Prev. pos (%f, %f) ", p->x, p->y);
     float x_pos = (2*mass*p->previous_x[0] + PERIOD*K*p->previous_x[0] + force.x*PERIOD*PERIOD - mass * p->previous_x[1]) / (mass + PERIOD * K);
     float y_pos = (2*mass*p->previous_y[0] + PERIOD*K*p->previous_y[0] + force.y*PERIOD*PERIOD - mass * p->previous_y[1]) / (mass + PERIOD * K);
 
@@ -256,7 +253,7 @@ void mapInit(Drone* drone, Message* status, Message* msg){
     fflush(file);
 
     droneUpdate(drone, &speed, &force, status);
-
+    LOGDRONEINFO(msg.drone);
 
     printMessageToFile(file, status);
 
@@ -341,6 +338,7 @@ int main(int argc, char *argv[]) {
 
                 newDrone(&drone, &status.targets, &status.obstacles, directions,file,status.msg);
                 droneUpdate(&drone, &speed, &force, &status);
+                LOGDRONEINFO(msg.drone);
 
                 // drone sends its position to BB
                 writeMsg(fds[askwr], &status, 
@@ -352,6 +350,7 @@ int main(int argc, char *argv[]) {
 
                 newDrone(&drone, &status.targets, &status.obstacles, directions,file,status.msg);
                 droneUpdate(&drone, &speed, &force, &status);
+                LOGDRONEINFO(msg.drone);
 
                 // drone sends its position to BB
                 writeMsg(fds[askwr], &status, 
@@ -362,6 +361,7 @@ int main(int argc, char *argv[]) {
                 
                 newDrone(&drone, &status.targets, &status.obstacles, directions,file,status.msg);
                 droneUpdate(&drone, &speed, &force, &status);
+                LOGDRONEINFO(msg.drone);
 
                 fprintf(file, "Drone updated position: %d,%d\n", status.drone.x, status.drone.y);
                 fflush(file);
