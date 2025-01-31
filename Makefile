@@ -1,8 +1,11 @@
+# Compiler and Librarian
 CC = gcc
 AR = ar
-CFLAGS = -I./include -Wall -Wextra -Wpedantic -g
+
+# Compilation flags
+CFLAGS = -I./include -I/usr/include/fastdds -I/usr/include/fastcdr -Wall -Wextra -Wpedantic -g
 LDFLAGS = -L$(BUILD_DIR)
-LIBS = -lauxfunc -lncurses -ltinfo -lm -lcjson
+LIBS = -lauxfunc -lncurses -ltinfo -lm -lcjson -lfastcdr -lfastdds
 
 # Directory
 SRC_DIR = src
@@ -18,35 +21,35 @@ AUX_OBJ = $(BUILD_DIR)/auxfunc.o
 LIBAUX = $(BUILD_DIR)/libauxfunc.a
 BINS = $(addprefix $(BIN_DIR)/,$(EXECUTABLES))
 
-# Target predefinito
+# Predefined targets
 all: directories $(LIBAUX) $(BINS)
 
-# Compila la libreria statica
+# Compile static library
 $(LIBAUX): $(AUX_OBJ)
 	$(AR) rcs $@ $^
 
-# Regole per compilare gli eseguibili
+# Compilation rules for executables
 $(BIN_DIR)/%: $(BUILD_DIR)/%.o $(LIBAUX)
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS) $(LIBS)
 
-# Regole per creare file oggetto (compresi file di libreria)
+# Creation rules for object files (included library's files)
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Regole per gestire le directory
+# Directory management rules
 .PHONY: directories
 directories:
 	mkdir -p $(BIN_DIR) $(BUILD_DIR) $(LOG_DIR)
 	rm -f $(LOG_DIR)/*.txt
 	rm -f $(LOG_DIR)/*.log
 
-# Pulisce solo i log
+# Log cleaning
 .PHONY: clean-logs
 clean-logs:
 	rm -f $(LOG_DIR)/*.txt
 	rm -f $(LOG_DIR)/*.log
 
-# Unico bersaglio clean
+# Clean
 .PHONY: clean
 clean:
 	rm -rf $(BIN_DIR) $(BUILD_DIR) $(LOG_DIR) # Elimina le directory esistenti
