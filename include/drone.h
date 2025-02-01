@@ -71,7 +71,7 @@ extern FILE *droneFile;
 }
 
 #else 
-#define LOGPOSITION(drone) {
+#define LOGPOSITION(drone) { \
     if (!droneFile) {                                                              \
         perror("Log file not initialized.\n");                                   \
         return;                                                                  \

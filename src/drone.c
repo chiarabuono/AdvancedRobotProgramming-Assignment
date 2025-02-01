@@ -64,14 +64,14 @@ void updatePosition(Drone *p, Force force, int mass, Speed *speed, Speed *speedP
     p->x = x_pos;
     p->y = y_pos;
 
-    // ADD LOG
-    // fprintf(droneFile, "Updated pos (%f, %f) \n", x_pos, y_pos);
-    // fprintf(droneFile, "x1 used (%f, %f), x2 used (%f, %f) Force used (%f, %f)\n", p->previous_x[0], p->previous_y[0], p->previous_x[1], p->previous_y[1], force.x, force.y);
+
+    if (p->x < 0 || p->x >= WINDOW_LENGTH) force_d.x = 0;
+    if (p->y < 0 || p->y >= WINDOW_WIDTH) force_d.y = 0;
 
     if (p->x < 0) p->x = 0;
+    else if (p->x >= WINDOW_LENGTH) p->x = WINDOW_LENGTH - 1;
     if (p->y < 0) p->y = 0;
-    if (p->x >= WINDOW_LENGTH) p->x = WINDOW_LENGTH - 1;
-    if (p->y >= WINDOW_WIDTH) p->y = WINDOW_WIDTH - 1;
+    else if (p->y >= WINDOW_WIDTH) p->y = WINDOW_WIDTH - 1;
 
     p->previous_x[1] = p->previous_x[0]; 
     p->previous_x[0] = p->x;  
@@ -92,20 +92,7 @@ void updatePosition(Drone *p, Force force, int mass, Speed *speed, Speed *speedP
 
 }
 
-void drone_force(Drone *p, float mass, float K, char* direction) {
-    // Force force = {0, 0};
-
-    // Calcolo delle derivate del movimento
-    // float derivative1x = (p->x - p->previous_x[0]) / PERIOD;
-    // float derivative2x = (p->previous_x[1] + p->x - 2 * p->previous_x[0]) / (PERIOD * PERIOD);
-    // float derivative1y = (p->y - p->previous_y[0]) / PERIOD;
-    // float derivative2y = (p->previous_y[1] + p->y - 2 * p->previous_y[0]) / (PERIOD * PERIOD);
-
-    // // Forze derivate dalle equazioni del moto
-    // force.x = mass * derivative2x - K * derivative1x;
-    // force.y = mass * derivative2y - K * derivative1y +1;
-
-    // Verifica della validità di direction
+void drone_force(float mass, float K, char* direction) {
     
     if (strcmp(direction, "") != 0) {
         // Imposta direzione x
@@ -132,45 +119,36 @@ void drone_force(Drone *p, float mass, float K, char* direction) {
         force_d.x += 0;
         force_d.y += 0;
     }
-    // To avoid having the drone still trying to move where it's not supposed to
-    if (p->x > WINDOW_WIDTH || p->x < 1) force_d.x = 0;
-    if (p->y > WINDOW_LENGTH || p->y < 1) force_d.y = 0;
 
 }
 
 void obstacle_force(Drone *drone, Obstacles* obstacles, FILE* droneFile) {
     // Force force = {0, 0};
-    float deltaX, deltaY, distance, distance2, alpha, adjustedForceX, adjustedForceY;
+    float deltaX, deltaY, distance;
     force_o.x = 0;
     force_o.y = 0;
 
     for (int i = 0; i < numObstacle + status.level; i++) {
-        deltaX = drone->x - obstacles->x[i];
-        deltaY = drone->y - obstacles->y[i];
+        deltaX =  obstacles->x[i] - drone->x;
+        deltaY =  obstacles->y[i] - drone->y;
         distance = sqrt(pow(deltaX, 2) + pow(deltaY, 2));
-        // fprintf(droneFile, "%f\t ", distance);
-        // fflush(droneFile);
+
         if (distance > FORCE_THRESHOLD) {
             continue; // Beyond influence radius
         }
-        // fprintf(droneFile,"(added %d)\t", i);
-        // fflush(droneFile);
         float repulsion =ETA * pow(((1/distance) - (1/FORCE_THRESHOLD)), 2)/distance;
         if (repulsion > MAX_FORCE) repulsion = MAX_FORCE;
-        adjustedForceX = repulsion * cos(alpha);
-        adjustedForceY = repulsion * sin(alpha);
+        force_o.x -= repulsion * (deltaX / distance);
+        force_o.y -= repulsion * (deltaY / distance);
 
-        force_o.x -= adjustedForceX;
-        force_o.y -= adjustedForceY;
+
     }
-    // fprintf(droneFile,"\n");
-    // fflush(droneFile);
 
 }
 
 void target_force(Drone *drone, Targets* targets, FILE* droneFile) {
     
-    float deltaX, deltaY, distance, distance2;
+    float deltaX, deltaY, distance;
     force_t.x = 0;
     force_t.y = 0;
 
@@ -180,17 +158,11 @@ void target_force(Drone *drone, Targets* targets, FILE* droneFile) {
             deltaY = targets->y[i] - drone->y;
             distance = sqrt(pow(deltaX, 2) + pow(deltaY, 2));
 
-            // fprintf(droneFile, "%f\t ", distance);
-            // fflush(droneFile);
 
-            if (distance > FORCE_THRESHOLD)
-                continue;
-            if (distance < FORCE_THRESHOLD/2) continue;
-
-            // fprintf(droneFile, "(added)\t");
-            // fflush(droneFile);
+            if (distance > FORCE_THRESHOLD) continue;
 
             float attraction = ETA * pow(((1/distance) - (1/FORCE_THRESHOLD)), 2)/distance;
+            if (attraction > MAX_FORCE) attraction = MAX_FORCE;
             force_t.x += attraction * (deltaX / distance);
             force_t.y += attraction * (deltaY / distance);
         }
@@ -226,7 +198,7 @@ void newDrone (Drone* drone, Targets* targets, Obstacles* obstacles, char* direc
     target_force(drone, targets, droneFile);
     obstacle_force(drone, obstacles, droneFile);
     if(inst == 'I'){
-        drone_force(drone, DRONEMASS, K, directions);
+        drone_force(DRONEMASS, K, directions);
     }
     force = total_force(force_d, force_o, force_t, droneFile);
 
@@ -348,7 +320,7 @@ int main(int argc, char *argv[]) {
 
                 newDrone(&drone, &status.targets, &status.obstacles, directions,droneFile,status.msg);
                 droneUpdate(&drone, &speed, &force, &status);
-                LOGDRONEINFO(status->drone);
+                LOGDRONEINFO(status.drone);
 
                 // drone sends its position to BB
                 writeMsg(fds[askwr], &status, 
@@ -360,7 +332,7 @@ int main(int argc, char *argv[]) {
                 newDrone(&drone, &status.targets, &status.obstacles, directions,droneFile,status.msg);
                 droneUpdate(&drone, &speed, &force, &status);
 
-                LOGPOSITION(drone);
+                //LOGPOSITION(drone);
                 
                 // drone sends its position to BB
                 writeMsg(fds[askwr], &status, 

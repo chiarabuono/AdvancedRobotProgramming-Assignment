@@ -132,12 +132,13 @@ static inline void getFormattedTime(char *buffer, size_t size) {
                                                                                  \
     fprintf(logFile, "%s New target hit. Targets hit:\n", date);            \
     for (int t = 0; t < MAX_TARGET; t++) {                                       \
-        if (status.targets.value[t] == 0) {        \
+        if (status.targets.value[t] == 0 && t < numTarget+1) {        \
         fprintf(logFile, "(%d, %d)", status.targets.x[t], status.targets.y[t]); \
         } \
     } \
-    fflush(logFile);  \ 
-}
+    fprintf(logFile, "\n");\
+    fflush(logFile);  \
+}    
 
 #define LOGPROCESSDIED(pid) { \
     if (!logFile) {                                                              \
