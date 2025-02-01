@@ -70,7 +70,7 @@ extern FILE *droneFile;
     fflush(droneFile); \
 }
 
-#else
+#else 
 #define LOGPOSITION(drone) {
     if (!droneFile) {                                                              \
         perror("Log file not initialized.\n");                                   \
@@ -84,11 +84,17 @@ extern FILE *droneFile;
 }
 #endif
 
-#define LOGDRONEINFO(dronestatus, dronedd) { \
-    if (USE_DEBUG) LOGPOSITION(dronedd); \
-    else LOGPOSITION(dronestatus); \
-    fprintf(droneFile, "Speed (%.2f, %.2f) ", dronestatus.speedX, dronestatus.speedY); \
-    fprintf(droneFile, "Force (%.2f, %.2f) ", dronestatus.forceX, dronestatus.forceY); \
+#define LOGDRONEINFO(dronebb){ \
+    if (!droneFile) {                                                              \
+        perror("Log file not initialized.\n");                                   \
+        return;                                                                  \
+    }                                                                            \
+                                                                                 \
+    char date[50];                                                               \
+    getFormattedTime(date, sizeof(date));                                        \
+    fprintf(droneFile, "%s Position (%d, %d) ", date, dronebb.x, dronebb.y); \
+    fprintf(droneFile, "Speed (%.2f, %.2f) ", dronebb.speedX, dronebb.speedY); \
+    fprintf(droneFile, "Force (%.2f, %.2f) ", dronebb.forceX, dronebb.forceY); \
     fprintf(droneFile, "\n"); \
     fflush(droneFile); \
 }

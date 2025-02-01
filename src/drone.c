@@ -252,7 +252,7 @@ void mapInit(Drone* drone, Message* status, Message* msg){
     fflush(droneFile);
 
     droneUpdate(drone, &speed, &force, status);
-    //LOGDRONEINFO(status->drone, drone);
+    LOGDRONEINFO(status->drone);
 
     writeMsg(fds[askwr], status, 
             "[DRONE] Error sending drone info", droneFile);
@@ -348,6 +348,7 @@ int main(int argc, char *argv[]) {
 
                 newDrone(&drone, &status.targets, &status.obstacles, directions,droneFile,status.msg);
                 droneUpdate(&drone, &speed, &force, &status);
+                LOGDRONEINFO(status->drone);
 
                 // drone sends its position to BB
                 writeMsg(fds[askwr], &status, 
