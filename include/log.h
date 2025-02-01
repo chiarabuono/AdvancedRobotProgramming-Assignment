@@ -15,11 +15,6 @@
 static FILE *logFile = NULL;
 char difficultyStr[10];
 
-// Funzione helper per ottenere il timestamp formattato
-static inline void getFormattedTime(char *buffer, size_t size) {
-    time_t currentTime = time(NULL);
-    snprintf(buffer, size, "%.*s", (int)(strlen(ctime(&currentTime)) - 1), ctime(&currentTime));
-}
 
 // Macro per il logging della configurazione
 #define LOGCONFIG(status) {                                                      \

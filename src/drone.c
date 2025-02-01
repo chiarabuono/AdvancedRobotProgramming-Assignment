@@ -10,7 +10,6 @@
 #include "auxfunc.h"
 #include <math.h>
 #include <signal.h>
-#include "log.h"
 #include "drone.h"
 
 // process that ask or receive
